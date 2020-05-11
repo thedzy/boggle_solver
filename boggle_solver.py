@@ -100,7 +100,9 @@ def main():
                 words_valid.extend(words)
 
     # Sort, remove duplicates and print
+    words_valid = list(set(words_valid))
     words_valid.sort()
+
 
     print('Words found that are contained in "{}" {}'.format(options.dictionary.name, ' ' * 40))
     print('\n'.join(words_valid))
