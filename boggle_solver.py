@@ -13,7 +13,7 @@ Find all the words in a given/generated puzzle
 __author__ = "thedzy"
 __copyright__ = "Copyright 2020, thedzy"
 __license__ = "GPL"
-__version__ = "1.0"
+__version__ = "1.1"
 __maintainer__ = "thedzy"
 __email__ = "thedzy@hotmail.com"
 __status__ = "Developer"
@@ -22,9 +22,13 @@ import argparse
 import math
 import os
 import random
+import pickle
 
 
 def main():
+    tree_dictionary = pickle.load(options.dictionary)
+    options.dictionary.close()
+
     # Get/make the puzzle
     if options.puzzle is None:
         letters = ''.join(chr(i + 97) for i in range(26))
@@ -53,7 +57,8 @@ def main():
     # Set the max/min length of a word
     if options.length is None:
         if options.length_max is None:
-            length_max = row_count ** 2
+            # Max word length of the puzzle size or 32, whichever is smaller
+            length_max = min(row_count ** 2, 32)
             print('WARNING: Max word length is {}'.format(length_max))
         else:
             length_max = options.length_max
@@ -76,21 +81,6 @@ def main():
     if length_min < 2:
         length_min = 2
 
-    dictionary_parsed = []
-    for length in range(row_count ** 2 + 1):
-        dictionary_parsed.append([length])
-
-    # Discard words out of range and sort into lengths while converting to lowercase
-    for dictionary_word in options.dictionary.read().splitlines():
-        if len(dictionary_word) < length_min:
-            del dictionary_word
-        elif len(dictionary_word) > length_max:
-            del dictionary_word
-        else:
-            dictionary_parsed[len(dictionary_word)].append(dictionary_word.lower())
-
-    options.dictionary.close()
-
     # Show the puzzle so tht the user can see what is being solved
     print('Puzzle: ')
     print('\n'.join([''.join(['{:4}'.format(item) for item in row]) for row in puzzle]))
@@ -105,15 +95,13 @@ def main():
             for length in range(length_min, length_max + 1):
                 words = []
                 print('Finding words starting with {} and of {} characters in length'.format(puzzle[x][y].upper(), length), end='\r')
-                get_words(x, y, length, puzzle[x][y], words, [(x, y)], puzzle)
+                get_words(x, y, length, puzzle[x][y], words, [(x, y)], puzzle, tree_dictionary)
 
-                for word in words:
-                    if word.lower() in dictionary_parsed[len(word)]:
-                        words_valid.append(word)
+                words_valid.extend(words)
 
     # Sort, remove duplicates and print
     words_valid.sort()
-    words_valid = list(dict.fromkeys(words_valid))
+
     print('Words found that are contained in "{}" {}'.format(options.dictionary.name, ' ' * 40))
     print('\n'.join(words_valid))
 
@@ -123,7 +111,7 @@ def main():
         print('Found {} words found between {} and {} characters in length'.format(len(words_valid), length_min, length_max))
 
 
-def get_words(x, y, length, word, words, used_squares, puzzle):
+def get_words(x, y, length, word, words, used_squares, puzzle, dictionary):
     """
     Get a word starting from a position and to a length
     Note: Recursive
@@ -150,12 +138,23 @@ def get_words(x, y, length, word, words, used_squares, puzzle):
                         if (temp_x, temp_y) not in used_squares:
                             new_used_squares = used_squares.copy()
                             new_used_squares.append((temp_x, temp_y))
-                            get_words(temp_x, temp_y, length - 1, word + puzzle[temp_x][temp_y], words, new_used_squares, puzzle)
+                            # Check that part of the word is in the dictionary before continuing
+                            if lookup_word(dictionary, word + puzzle[temp_x][temp_y]):
+                                get_words(temp_x, temp_y, length - 1, word + puzzle[temp_x][temp_y], words, new_used_squares, puzzle, dictionary)
 
     # Append the word to the list
     if length <= 1:
         words.append(word)
         return
+
+
+def lookup_word(dictionary, word):
+    for letter in word:
+        try:
+            dictionary = dictionary[letter]
+        except KeyError:
+            return False
+    return True
 
 
 if __name__ == '__main__':
@@ -192,10 +191,10 @@ if __name__ == '__main__':
                              '\nDefault: %(default)s')
 
     # Dictionary/word/phrase
-    parser.add_argument('-d', '--dict', type=argparse.FileType('r'),
+    parser.add_argument('-d', '--dict', type=argparse.FileType('rb'),
                         action='store', dest='dictionary',
-                        default=os.path.join(os.path.dirname(__file__), 'collins_scrabble_words_2019.txt'),
-                        help='Dictionary file to use'
+                        default=os.path.join(os.path.dirname(__file__), 'dictionary.hd'),
+                        help='Dictionary file to use, in .hd format, See convert_dicitonary.py'
                              '\nDefault: %(default)s')
 
     # Puzzle
