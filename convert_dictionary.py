@@ -29,11 +29,14 @@ def main():
     # If given a source, then convert, otherwise load and test
     if options.source is not None:
         print('Creating')
-        words = options.source.read().splitlines()
+        words = options.source.readlines()
         options.source.close()
 
         for word in words:
             add_to_dictionary(tree_dictionary, word.lower())
+
+        #print(json.dumps(tree_dictionary, indent=4, sort_keys=True))
+
 
         pickle.dump(tree_dictionary, options.dictionary)
     else:
