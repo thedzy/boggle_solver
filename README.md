@@ -11,7 +11,7 @@ usage: boggle_solver.py [-h] [-l LENGTH] [-x LENGTH_MAX] [-m LENGTH_MIN] [-d DIC
 
 Will find all the words in a given/generated puzzle using a dictionary of choice.
 
-optional arguments:
+Optional arguments:
     -h, --help
             show this help message and exit
     -l LENGTH, --length LENGTH
@@ -24,8 +24,8 @@ optional arguments:
             Minimum word length
             Default: 3
     -d DICTIONARY, --dict DICTIONARY
-            Dictionary file to use,
-            Default: /usr/share/dict/words (not recommended to use default)
+            Dictionary file to use, in .hd format, See convert_dicitonary.py
+            Default: dictionary.hd
     -p [PUZZLE [PUZZLE ...]], --puzzle [PUZZLE [PUZZLE ...]]
             Puzzle in order of appearance, space separated, top-left to bottom-right
             Default: randomly generated
@@ -50,3 +50,8 @@ While I debated multithreading it, just to see the change, I ultimately decided 
 
 ## State?
 No known bugs.  Works.
+
+## New
+### 1.1
+I have made performance improvements by orders of magnitude.  From a 5x5 puzzle and finding words up to 9 in length taking minutes to 100x100 and 32 in length taking seconds.\
+Now uses a custom dictionary format, converter included.  Dictionary is now a hierarchy of letters, allowing fast searches for partial words.
