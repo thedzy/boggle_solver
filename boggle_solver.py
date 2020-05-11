@@ -141,7 +141,7 @@ def get_words(x, y, length, word, words, used_squares, puzzle, dictionary):
                             new_used_squares = used_squares.copy()
                             new_used_squares.append((temp_x, temp_y))
                             # Check that part of the word is in the dictionary before continuing
-                            if lookup_word(dictionary, word):
+                            if lookup_word(dictionary, word + puzzle[temp_x][temp_y]):
                                 get_words(temp_x, temp_y, length - 1, word + puzzle[temp_x][temp_y], words, new_used_squares, puzzle, dictionary)
 
     # Append the word to the list
