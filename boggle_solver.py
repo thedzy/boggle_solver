@@ -111,8 +111,11 @@ def main():
     if len(words_valid) > 0:
         if options.columns:
             divider = ' | '
-            terminal_width, _ = os.get_terminal_size()
-            column_width = len(max(words_valid, key=len)) + len(divider)  # 3 to offset the spacer
+            try:
+                terminal_width, _ = os.get_terminal_size()
+            except OSError:
+                terminal_width = 80
+            column_width = len(max(words_valid, key=len)) + len(divider)
             columns = int((terminal_width - len(divider)) / column_width)
             column_height = int(len(words_valid) / columns) + 1
 
@@ -168,15 +171,14 @@ def get_words(x, y, length, word, words, used_squares, puzzle, dictionary):
                 temp_x = x + pos_x
                 temp_y = y + pos_y
                 # Are the coordinates in bounds?
-                if 0 <= temp_x < row_count and temp_y >= 0 and temp_y < row_count:
+                if 0 <= temp_x < row_count and 0 <= temp_y < row_count:
                     if (temp_x, temp_y) not in used_squares:
-                        if (temp_x, temp_y) not in used_squares:
-                            new_used_squares = used_squares.copy()
-                            new_used_squares.append((temp_x, temp_y))
-                            # Check that part of the word is in the dictionary before continuing
-                            if lookup_word(dictionary, word + puzzle[temp_x][temp_y]):
-                                get_words(temp_x, temp_y, length - 1, word + puzzle[temp_x][temp_y], words,
-                                          new_used_squares, puzzle, dictionary)
+                        new_used_squares = used_squares.copy()
+                        new_used_squares.append((temp_x, temp_y))
+                        # Check that part of the word is in the dictionary before continuing
+                        if lookup_word(dictionary, word + puzzle[temp_x][temp_y]):
+                            get_words(temp_x, temp_y, length - 1, word + puzzle[temp_x][temp_y], words,
+                                      new_used_squares, puzzle, dictionary)
 
     # Append the word to the list
     if length <= 1:
