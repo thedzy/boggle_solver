@@ -94,23 +94,54 @@ def main():
 
             for length in range(length_min, length_max + 1):
                 words = []
-                print('Finding words starting with {} and of {} characters in length'.format(puzzle[x][y].upper(), length), end='\r')
+                print('Finding words starting with {} and of {} characters in length'.format(puzzle[x][y].upper(),
+                                                                                             length), end='\r')
                 get_words(x, y, length, puzzle[x][y], words, [(x, y)], puzzle, tree_dictionary)
 
                 words_valid.extend(words)
 
-    # Sort, remove duplicates and print
+    # Remove duplicates and sort
     words_valid = list(set(words_valid))
     words_valid.sort()
-
-
+    if options.order_size:
+        words_valid.sort(key=len)
     print('Words found that are contained in "{}" {}'.format(options.dictionary.name, ' ' * 40))
-    print('\n'.join(words_valid))
 
+    # Print
+    if options.columns:
+        divider = ' | '
+        terminal_width, _ = os.get_terminal_size()
+        column_width = len(max(words_valid, key=len)) + len(divider)  # 3 to offset the spacer
+        columns = int((terminal_width - len(divider)) / column_width)
+        column_height = int(len(words_valid) / columns) + 1
+
+        words_valid_columned = []
+        start, end = 0, 0
+        while end < len(words_valid):
+            end = start + column_height
+            try:
+                words_valid_columned.append(words_valid[start:end])
+            except IndexError:
+                words_valid_columned.append(words_valid[start:])
+            start = end
+
+        for row in range(column_height):
+            print(divider, end='')
+            for column in words_valid_columned:
+                try:
+                    print(column[row].ljust(column_width - len(divider), ' '), end=divider)
+                except IndexError:
+                    break
+            print()
+    else:
+        print('\n'.join(words_valid))
+
+    # Print word count
     if length_min is length_max:
         print('Found {} words found of {} characters in length'.format(len(words_valid), length_max))
     else:
-        print('Found {} words found between {} and {} characters in length'.format(len(words_valid), length_min, length_max))
+        print('Found {} words found between {} and {} characters in length'.format(len(words_valid), length_min,
+                                                                                   length_max))
 
 
 def get_words(x, y, length, word, words, used_squares, puzzle, dictionary):
@@ -124,6 +155,7 @@ def get_words(x, y, length, word, words, used_squares, puzzle, dictionary):
     :param words: (list)(string) List of found words
     :param used_squares: (list)(tuples) For recursion, track used positions
     :param puzzle: (list)(list)(string) Puzzle matrix
+    :param dictionary: (dict) Hierarchy dictionary
     :return: (void)
     """
     row_count = len(puzzle)
@@ -135,14 +167,15 @@ def get_words(x, y, length, word, words, used_squares, puzzle, dictionary):
                 temp_x = x + pos_x
                 temp_y = y + pos_y
                 # Are the coordinates in bounds?
-                if temp_x >= 0 and temp_x < row_count and temp_y >= 0 and temp_y < row_count:
+                if 0 <= temp_x < row_count and temp_y >= 0 and temp_y < row_count:
                     if (temp_x, temp_y) not in used_squares:
                         if (temp_x, temp_y) not in used_squares:
                             new_used_squares = used_squares.copy()
                             new_used_squares.append((temp_x, temp_y))
                             # Check that part of the word is in the dictionary before continuing
                             if lookup_word(dictionary, word + puzzle[temp_x][temp_y]):
-                                get_words(temp_x, temp_y, length - 1, word + puzzle[temp_x][temp_y], words, new_used_squares, puzzle, dictionary)
+                                get_words(temp_x, temp_y, length - 1, word + puzzle[temp_x][temp_y], words,
+                                          new_used_squares, puzzle, dictionary)
 
     # Append the word to the list
     if length <= 1:
@@ -174,10 +207,11 @@ if __name__ == '__main__':
         except TypeError:
             return format_class
 
-    parser = argparse.ArgumentParser(description='Will find all the words in a given/generated puzzle using a dictionary of choice.',
-                                     formatter_class=parser_formatter(argparse.RawTextHelpFormatter, indent_increment=4, max_help_position=12, width=160))
-    parser._positionals.title = 'Positional arguments'
-    parser._optionals.title = 'Optional arguments'
+
+    parser = argparse.ArgumentParser(
+        description='Will find all the words in a given/generated puzzle using a dictionary of choice.',
+        formatter_class=parser_formatter(argparse.RawTextHelpFormatter, indent_increment=4, max_help_position=12,
+                                         width=160))
 
     parser.add_argument('-l', '--length', type=int,
                         action='store', dest='length', default=None,
@@ -197,7 +231,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--dict', type=argparse.FileType('rb'),
                         action='store', dest='dictionary',
                         default=os.path.join(os.path.dirname(__file__), 'dictionary.hd'),
-                        help='Dictionary file to use, in .hd format, See convert_dicitonary.py'
+                        help='Dictionary file to use, in .hd format, See convert_dictionary.py'
                              '\nDefault: %(default)s')
 
     # Puzzle
@@ -213,6 +247,16 @@ if __name__ == '__main__':
                              '\nDefault: %(default)s'
                              '\nExample: 4 is 4x4')
 
+    # Display
+    parser.add_argument('-o', '--order-size',
+                        action='store_true', dest='order_size', default=False,
+                        help='Display words ordered by size'
+                             '\nDefault: %(default)s')
+
+    parser.add_argument('-c', '--columns',
+                        action='store_true', dest='columns', default=False,
+                        help='Display as columns'
+                             '\nDefault: %(default)s')
     options = parser.parse_args()
 
     main()
