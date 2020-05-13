@@ -108,33 +108,34 @@ def main():
     print('Words found that are contained in "{}" {}'.format(options.dictionary.name, ' ' * 40))
 
     # Print
-    if options.columns:
-        divider = ' | '
-        terminal_width, _ = os.get_terminal_size()
-        column_width = len(max(words_valid, key=len)) + len(divider)  # 3 to offset the spacer
-        columns = int((terminal_width - len(divider)) / column_width)
-        column_height = int(len(words_valid) / columns) + 1
+    if len(words_valid) > 0:
+        if options.columns:
+            divider = ' | '
+            terminal_width, _ = os.get_terminal_size()
+            column_width = len(max(words_valid, key=len)) + len(divider)  # 3 to offset the spacer
+            columns = int((terminal_width - len(divider)) / column_width)
+            column_height = int(len(words_valid) / columns) + 1
 
-        words_valid_columned = []
-        start, end = 0, 0
-        while end < len(words_valid):
-            end = start + column_height
-            try:
-                words_valid_columned.append(words_valid[start:end])
-            except IndexError:
-                words_valid_columned.append(words_valid[start:])
-            start = end
-
-        for row in range(column_height):
-            print(divider, end='')
-            for column in words_valid_columned:
+            words_valid_columned = []
+            start, end = 0, 0
+            while end < len(words_valid):
+                end = start + column_height
                 try:
-                    print(column[row].ljust(column_width - len(divider), ' '), end=divider)
+                    words_valid_columned.append(words_valid[start:end])
                 except IndexError:
-                    break
-            print()
-    else:
-        print('\n'.join(words_valid))
+                    words_valid_columned.append(words_valid[start:])
+                start = end
+
+            for row in range(column_height):
+                print(divider, end='')
+                for column in words_valid_columned:
+                    try:
+                        print(column[row].ljust(column_width - len(divider), ' '), end=divider)
+                    except IndexError:
+                        break
+                print()
+        else:
+            print('\n'.join(words_valid))
 
     # Print word count
     if length_min is length_max:
