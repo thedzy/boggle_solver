@@ -7,11 +7,11 @@ Find all the words in a given/generated puzzle using a dictionary of choice.
 Give the solver a puzzle and the parameter that it works in and get the results.
 
 ```bash
-usage: boggle_solver.py [-h] [-l LENGTH] [-x LENGTH_MAX] [-m LENGTH_MIN] [-d DICTIONARY] [-p [PUZZLE [PUZZLE ...]]] [-s PUZZLE_SIZE]
+usage: boggle_solver.py [-h] [-l LENGTH] [-x LENGTH_MAX] [-m LENGTH_MIN] [-d DICTIONARY] [-p [PUZZLE [PUZZLE ...]]] [-s PUZZLE_SIZE] [-o] [-c]
 
 Will find all the words in a given/generated puzzle using a dictionary of choice.
 
-Optional arguments:
+optional arguments:
     -h, --help
             show this help message and exit
     -l LENGTH, --length LENGTH
@@ -24,8 +24,8 @@ Optional arguments:
             Minimum word length
             Default: 3
     -d DICTIONARY, --dict DICTIONARY
-            Dictionary file to use, in .hd format, See convert_dicitonary.py
-            Default: dictionary.hd
+            Dictionary file to use, in .hd format, See convert_dictionary.py
+            Default: /Users/syoung/Documents/GitHub/boggle_solver/dictionary.hd
     -p [PUZZLE [PUZZLE ...]], --puzzle [PUZZLE [PUZZLE ...]]
             Puzzle in order of appearance, space separated, top-left to bottom-right
             Default: randomly generated
@@ -34,6 +34,12 @@ Optional arguments:
             Puzzle size if randomly generated randomly generated
             Default: 4
             Example: 4 is 4x4
+    -o, --order-size
+            Display words ordered by size
+            Default: False
+    -c, --columns
+            Display as columns
+            Default: False
 ```
 
 ## Why?
