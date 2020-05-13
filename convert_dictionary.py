@@ -18,7 +18,6 @@ __maintainer__ = "thedzy"
 __email__ = "thedzy@hotmail.com"
 __status__ = "Developer"
 
-import json
 import pickle
 import argparse
 
@@ -34,9 +33,6 @@ def main():
 
         for word in words:
             add_to_dictionary(tree_dictionary, word.lower())
-
-        #print(json.dumps(tree_dictionary, indent=4, sort_keys=True))
-
 
         pickle.dump(tree_dictionary, options.dictionary)
     else:
@@ -86,7 +82,6 @@ if __name__ == '__main__':
             return lambda prog: format_class(prog, **kwargs)
         except TypeError:
             return format_class
-
 
     parser = argparse.ArgumentParser(description='Convert a dictionary to a hierarchy dictionary',
                                      formatter_class=parser_formatter(
