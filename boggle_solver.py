@@ -78,8 +78,11 @@ def main():
     if length_min > length_max:
         length_min = length_max
 
-    if length_min < 2:
-        length_min = 2
+    if length_min < 1:
+        length_min = 1
+
+    if length_max < 1:
+        length_max = 1
 
     # Show the puzzle so tht the user can see what is being solved
     print('Puzzle: ')
@@ -92,16 +95,16 @@ def main():
         for index_y in range(0, row_count):
             x, y = (index_x, index_y)
 
-            for length in range(length_min, length_max + 1):
+            for length in range(1, length_max + 1):
                 words = []
                 print('Finding words starting with {} and of {} characters in length'.format(puzzle[x][y].upper(),
                                                                                              length), end='\r')
                 get_words(x, y, length, puzzle[x][y], words, [(x, y)], puzzle, tree_dictionary)
-
                 words_valid.extend(words)
 
-    # Remove duplicates and sort
+    # Remove duplicates, filter and sort
     words_valid = list(set(words_valid))
+    words_valid = list(filter(lambda word_valid: length_min <= len(word_valid) <= length_max, words_valid))
     words_valid.sort()
     if options.order_size:
         words_valid.sort(key=len)
@@ -116,7 +119,7 @@ def main():
             except OSError:
                 terminal_width = 80
             column_width = len(max(words_valid, key=len)) + len(divider)
-            columns = int((terminal_width - len(divider)) / column_width)
+            columns = int(((terminal_width - 1) - len(divider)) / column_width)
             column_height = int(len(words_valid) / columns) + 1
 
             words_valid_columned = []
