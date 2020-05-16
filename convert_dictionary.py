@@ -13,13 +13,14 @@ Converts a list of words to a hierarchy format for fast parsing
 __author__ = "thedzy"
 __copyright__ = "Copyright 2020, thedzy"
 __license__ = "GPL"
-__version__ = "1.0"
+__version__ = "1.1"
 __maintainer__ = "thedzy"
 __email__ = "thedzy@hotmail.com"
 __status__ = "Developer"
 
 import pickle
 import argparse
+
 
 def main():
     # Initialise
@@ -31,6 +32,9 @@ def main():
         words = options.source.readlines()
         options.source.close()
 
+        for add_word in options.add_words:
+            words.append(add_word + '\n')
+
         for word in words:
             add_to_dictionary(tree_dictionary, word.lower())
 
@@ -39,7 +43,11 @@ def main():
         tree_dictionary = pickle.load(options.dictionary)
 
     if options.word is not None:
-        print('Found match for {}: {}'.format(options.word, lookup_word(tree_dictionary, options.word)))
+        if options.exact:
+            found = lookup_word(tree_dictionary, options.word + '\n')
+        else:
+            found = lookup_word(tree_dictionary, options.word)
+        print('Found match for {}: {}'.format(options.word, found))
 
 
 def add_to_dictionary(dictionary, word):
@@ -88,21 +96,32 @@ if __name__ == '__main__':
                                          argparse.RawTextHelpFormatter,
                                          indent_increment=4, max_help_position=12, width=160))
 
+    # Source
     parser.add_argument('-s', '--source', type=argparse.FileType('r'),
                         action='store', dest='source', default=None,
                         metavar='PATH',
-                        help='Source dictionary to create the hierarchy dictionary from')\
+                        help='Source dictionary to create the hierarchy dictionary from')
+    parser.add_argument('-a', '--add',
+                        action='store', dest='add_words', default=None, nargs='*',
+                        metavar='ADDITIONAL_WORD',
+                        help='Words to add in addition to the source')
 
+    # Destination
     parser.add_argument('-d', '--dictionary', type=argparse.FileType('rb+'),
                         action='store', dest='dictionary', default=None,
                         metavar='PATH',
                         help='Dictionary to loaded or created',
                         required=True)
 
+    # Lookups
     parser.add_argument('-w', '--word',
                         action='store', dest='word', default=None,
                         metavar='WORD',
-                        help='Word to lookup')
+                        help='Word or partial word to lookup')
+    parser.add_argument('-e', '--exact',
+                        action='store_true', dest='exact', default=False,
+                        help='Match only whole word'
+                             '\nDefault: %(default)s')
 
     options = parser.parse_args()
 
