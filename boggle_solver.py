@@ -13,7 +13,7 @@ Find all the words in a given/generated puzzle
 __author__ = "thedzy"
 __copyright__ = "Copyright 2020, thedzy"
 __license__ = "GPL"
-__version__ = "1.1"
+__version__ = "1.2"
 __maintainer__ = "thedzy"
 __email__ = "thedzy@hotmail.com"
 __status__ = "Developer"
@@ -23,11 +23,31 @@ import math
 import os
 import random
 import pickle
+import re
 
 
 def main():
-    tree_dictionary = pickle.load(options.dictionary)
-    options.dictionary.close()
+    # Load dictionary
+    try:
+        tree_dictionary = pickle.load(options.dictionary)
+        options.dictionary.close()
+    except (UnicodeDecodeError, EOFError):
+        print('Dictionary may be corrupt or not a dictionary')
+        print('Verify file or reprocess dictionary')
+        exit()
+    except Exception as err:
+        print('Error loading dictionary:')
+        print('\t', err)
+        exit()
+
+    # Validate regex before continuing
+    if options.filter:
+        try:
+            pattern = re.compile(options.filter, re.IGNORECASE)
+        except re.error as err:
+            print('Error in regex statement:')
+            print('\t', err.msg.title())
+            exit()
 
     # Get/make the puzzle
     if options.puzzle is None:
@@ -105,10 +125,18 @@ def main():
     # Remove duplicates, filter and sort
     words_valid = list(set(words_valid))
     words_valid = list(filter(lambda word_valid: length_min <= len(word_valid) <= length_max, words_valid))
+
+    # If a filter is used
+    if options.filter:
+        print('Filtering with "{}" {}'.format(options.filter, ' ' * 80))
+        for word in words_valid[:]:
+            if not pattern.fullmatch(word):
+                words_valid.remove(word)
+
     words_valid.sort()
     if options.order_size:
         words_valid.sort(key=len)
-    print('Words found that are contained in "{}" {}'.format(options.dictionary.name, ' ' * 40))
+    print('Words found that are contained in "{}"{}'.format(options.dictionary.name, ' ' * 80))
 
     # Print
     if len(words_valid) > 0:
@@ -145,10 +173,11 @@ def main():
 
     # Print word count
     if length_min is length_max:
-        print('Found {} words found of {} characters in length'.format(len(words_valid), length_max))
+        print('Found {} words found of {} characters in length and matching filters'.format(
+            len(words_valid), length_max))
     else:
-        print('Found {} words found between {} and {} characters in length'.format(len(words_valid), length_min,
-                                                                                   length_max))
+        print('Found {} words found between {} and {} characters in length and matching filters'.format(
+            len(words_valid), length_min, length_max))
 
 
 def get_words(x, y, length, word, words, used_squares, puzzle, dictionary):
@@ -258,11 +287,19 @@ if __name__ == '__main__':
                         action='store_true', dest='order_size', default=False,
                         help='Display words ordered by size'
                              '\nDefault: %(default)s')
-
     parser.add_argument('-c', '--columns',
                         action='store_true', dest='columns', default=False,
                         help='Display as columns'
                              '\nDefault: %(default)s')
+    parser.add_argument('-f', '--filter',
+                        action='store', dest='filter', default=None,
+                        metavar='REGEX',
+                        help='Filter results\n'
+                             'Note:Only exact matches are found. \n'
+                             'Examples:\n'
+                             'z will find only z, z.* will find all words beginning with z \n'
+                             '.{3}|.{5} will find 3 or 5 letter words\n'
+                             'Default: %(default)s')
     options = parser.parse_args()
 
     main()
