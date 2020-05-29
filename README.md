@@ -7,7 +7,7 @@ Find all the words in a given/generated puzzle using a dictionary of choice.
 Give the solver a puzzle and the parameter that it works in and get the results.
 
 ```bash
-usage: boggle_solver.py [-h] [-l LENGTH] [-x LENGTH_MAX] [-m LENGTH_MIN] [-d DICTIONARY] [-p [PUZZLE [PUZZLE ...]]] [-s PUZZLE_SIZE] [-o] [-c]
+usage: boggle_solver.py [-h] [-l LENGTH] [-x LENGTH_MAX] [-m LENGTH_MIN] [-d DICTIONARY] [-p [PUZZLE [PUZZLE ...]]] [-s PUZZLE_SIZE] [-o] [-c] [-f REGEX]
 
 Will find all the words in a given/generated puzzle using a dictionary of choice.
 
@@ -25,7 +25,7 @@ optional arguments:
             Default: 3
     -d DICTIONARY, --dict DICTIONARY
             Dictionary file to use, in .hd format, See convert_dictionary.py
-            Default: /Users/syoung/Documents/GitHub/boggle_solver/dictionary.hd
+            Default: ./dictionary.hd
     -p [PUZZLE [PUZZLE ...]], --puzzle [PUZZLE [PUZZLE ...]]
             Puzzle in order of appearance, space separated, top-left to bottom-right
             Default: randomly generated
@@ -40,6 +40,13 @@ optional arguments:
     -c, --columns
             Display as columns
             Default: False
+    -f REGEX, --filter REGEX
+            Filter results
+            Note:Only exact matches are found.
+            Examples:
+            z will find only z, z.* will find all words begining with z
+            .{3}|.{5} will find 3 or 5 letter words
+            Default: None
 ```
 
 ## Why?
@@ -61,3 +68,5 @@ No known bugs.  Works.
 ### 1.1
 I have made performance improvements by orders of magnitude.  From a 5x5 puzzle and finding words up to 9 in length taking minutes to 100x100 and 32 in length taking seconds.\
 Now uses a custom dictionary format, converter included.  Dictionary is now a hierarchy of letters, allowing fast searches for partial words.
+## 1.2 
+Added regex filtering to results
