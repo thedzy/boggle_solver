@@ -32,8 +32,9 @@ def main():
         words = options.source.readlines()
         options.source.close()
 
-        for add_word in options.add_words:
-            words.append(add_word + '\n')
+        if options.add_words:
+            for add_word in options.add_words:
+                words.append(add_word + '\n')
 
         for word in words:
             add_to_dictionary(tree_dictionary, word.lower())
@@ -107,10 +108,10 @@ if __name__ == '__main__':
                         help='Words to add in addition to the source')
 
     # Destination
-    parser.add_argument('-d', '--dictionary', type=argparse.FileType('rb+'),
+    parser.add_argument('-d', '--dictionary', type=argparse.FileType('wb+'),
                         action='store', dest='dictionary', default=None,
                         metavar='PATH',
-                        help='Dictionary to loaded or created',
+                        help='Dictionary to load or create',
                         required=True)
 
     # Lookups
