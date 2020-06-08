@@ -90,3 +90,4 @@ Listing alphabetically is optional now, otherwise, will display in the order fou
 Added option to list is ascending or descending size
 Added option to send key presses on Windows to enter the words into Wordament
 Fixed an issue in convert_dicitonary.py that caused it to require additional words
+If all letters are single, spaces are not required.  ex: -p a b c d e f g h i j k l m n o p  =>  -p abcdefghijklmnop
