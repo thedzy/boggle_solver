@@ -6,8 +6,11 @@ Find all the words in a given/generated puzzle using a dictionary of choice.
 
 Give the solver a puzzle and the parameter that it works in and get the results.
 
-```bash
-usage: boggle_solver.py [-h] [-l LENGTH] [-x LENGTH_MAX] [-m LENGTH_MIN] [-d DICTIONARY] [-p [PUZZLE [PUZZLE ...]]] [-s PUZZLE_SIZE] [-o] [-c] [-f REGEX]
+Optionally, play the puzzle for you.
+
+```
+usage: boggle_solver.py [-h] [-l LENGTH] [-x LENGTH_MAX] [-m LENGTH_MIN] [-d DICTIONARY] [-p [PUZZLE [PUZZLE ...]]] [-s PUZZLE_SIZE] [-a] [-o] [-r] [--list]
+                        [-f REGEX] [-e [WAIT_TIME]]
 
 Will find all the words in a given/generated puzzle using a dictionary of choice.
 
@@ -34,19 +37,29 @@ optional arguments:
             Puzzle size if randomly generated randomly generated
             Default: 4
             Example: 4 is 4x4
-    -o, --order-size
-            Display words ordered by size
+    -a, --alpha
+            Display words ordered alphabetical
             Default: False
-    -c, --columns
-            Display as columns
+    -o, --order-ascending
+            Display words ordered by size ascending, compatible with -a/--alpha
             Default: False
+    -r, --order-descending
+            Display words ordered by size ascending, compatible with -a/--alpha
+            Default: False
+    --list  Display as list instead of columns
+            Default: True
     -f REGEX, --filter REGEX
             Filter results
             Note:Only exact matches are found.
             Examples:
-            z will find only z, z.* will find all words begining with z
+            z will find only z, z.* will find all words beginning with z
             .{3}|.{5} will find 3 or 5 letter words
             Default: None
+    -e [WAIT_TIME], --enter [WAIT_TIME]
+            After x seconds delay, start entering with keyboard
+            This is the time to switch to the app to receive keyboard strokes
+            Default: 4
+            Note: Windows ONLY
 ```
 
 ## Why?
@@ -68,5 +81,12 @@ No known bugs.  Works.
 ### 1.1
 I have made performance improvements by orders of magnitude.  From a 5x5 puzzle and finding words up to 9 in length taking minutes to 100x100 and 32 in length taking seconds.\
 Now uses a custom dictionary format, converter included.  Dictionary is now a hierarchy of letters, allowing fast searches for partial words.
-## 1.2 
+### 1.2 
 Added regex filtering to results
+### 1.3
+Replaced the dictionary to better align with Wordament, old one still remains
+Made column mode the default with the ability to override
+Listing alphabetically is optional now, otherwise, will display in the order found
+Added option to list is ascending or descending size
+Added option to send key presses on Windows to enter the words into Wordament
+Fixed an issue in convert_dicitonary.py that caused it to require additional words
