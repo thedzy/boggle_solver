@@ -13,17 +13,19 @@ Find all the words in a given/generated puzzle
 __author__ = "thedzy"
 __copyright__ = "Copyright 2020, thedzy"
 __license__ = "GPL"
-__version__ = "1.2"
+__version__ = "1.3"
 __maintainer__ = "thedzy"
 __email__ = "thedzy@hotmail.com"
 __status__ = "Developer"
 
 import argparse
+import ctypes
 import math
 import os
-import random
 import pickle
+import random
 import re
+import time
 
 
 def main():
@@ -58,6 +60,11 @@ def main():
             puzzle.append(list(random.choice(letters) for _ in range(row_count)))
     else:
         puzzle_length = len(options.puzzle)
+        # If length of one, lets assume they characters are not spaced
+        if puzzle_length == 1:
+            options.puzzle = list(options.puzzle[0])
+            puzzle_length = len(options.puzzle)
+
         row_count = math.sqrt(puzzle_length)
 
         if int(row_count) != row_count:
@@ -123,7 +130,7 @@ def main():
                 words_valid.extend(words)
 
     # Remove duplicates, filter and sort
-    words_valid = list(set(words_valid))
+    words_valid = sorted(set(words_valid), key=words_valid.index)
     words_valid = list(filter(lambda word_valid: length_min <= len(word_valid) <= length_max, words_valid))
 
     # If a filter is used
@@ -132,10 +139,10 @@ def main():
         for word in words_valid[:]:
             if not pattern.fullmatch(word):
                 words_valid.remove(word)
-
-    words_valid.sort()
-    if options.order_size:
-        words_valid.sort(key=len)
+    if options.order_alpha:
+        words_valid.sort()
+    if options.order_size or options.order_size_r:
+        words_valid.sort(key=len, reverse=options.order_size_r)
     print('Words found that are contained in "{}"{}'.format(options.dictionary.name, ' ' * 80))
 
     # Print
@@ -179,6 +186,39 @@ def main():
         print('Found {} words found between {} and {} characters in length and matching filters'.format(
             len(words_valid), length_min, length_max))
 
+    # If emulating keyboard
+    if options.enter:
+        # Countdown to start
+        print('Starting typing in ', end='')
+        count_down_timer = options.enter + 1
+        for count_down in range(1, count_down_timer):
+            print(count_down_timer - count_down)
+            time.sleep(1)
+        print('Go!')
+
+        # For each word, emulate typing
+        for word in words_valid:
+            for letter in word:
+                win_press_key(letter, 0.075)
+            win_press_key()
+            print('Entering:', word)
+
+            # Pause between each word to give program time to score
+            time.sleep(1)
+
+
+def win_press_key(key=None, hold_time=0.1):
+    """
+    Emulate a keyboard press, <enter> default
+    :param key: (string) Single character to emulate
+    :param hold_time: (int) Key hold time
+    :return: (void)
+    """
+    code = ord(key.upper()) if key else 0x0D
+    ctypes.windll.user32.keybd_event(code, 0, 0, 0)
+    time.sleep(hold_time)
+    ctypes.windll.user32.keybd_event(code, 0, 0x0002, 0)
+
 
 def get_words(x, y, length, word, words, used_squares, puzzle, dictionary):
     """
@@ -220,6 +260,12 @@ def get_words(x, y, length, word, words, used_squares, puzzle, dictionary):
 
 
 def lookup_word(dictionary, word):
+    """
+    Find full or partial record of word in dictionary
+    :param dictionary: (dict) Hierarchy dictionary
+    :param word: (string) String to locate
+    :return: (bool) Found
+    """
     for letter in word:
         try:
             dictionary = dictionary[letter]
@@ -283,13 +329,21 @@ if __name__ == '__main__':
                              '\nExample: 4 is 4x4')
 
     # Display
-    parser.add_argument('-o', '--order-size',
-                        action='store_true', dest='order_size', default=False,
-                        help='Display words ordered by size'
+    parser.add_argument('-a', '--alpha',
+                        action='store_true', dest='order_alpha', default=False,
+                        help='Display words ordered alphabetical'
                              '\nDefault: %(default)s')
-    parser.add_argument('-c', '--columns',
-                        action='store_true', dest='columns', default=False,
-                        help='Display as columns'
+    parser.add_argument('-o', '--order-ascending',
+                        action='store_true', dest='order_size', default=False,
+                        help='Display words ordered by size ascending, compatible with -a/--alpha'
+                             '\nDefault: %(default)s')
+    parser.add_argument('-r', '--order-descending',
+                        action='store_true', dest='order_size_r', default=False,
+                        help='Display words ordered by size ascending, compatible with -a/--alpha'
+                             '\nDefault: %(default)s')
+    parser.add_argument('--list',
+                        action='store_false', dest='columns', default=True,
+                        help='Display as list instead of columns'
                              '\nDefault: %(default)s')
     parser.add_argument('-f', '--filter',
                         action='store', dest='filter', default=None,
@@ -300,6 +354,17 @@ if __name__ == '__main__':
                              'z will find only z, z.* will find all words beginning with z \n'
                              '.{3}|.{5} will find 3 or 5 letter words\n'
                              'Default: %(default)s')
+
+    # Emulate the keyboard
+    parser.add_argument('-e', '--enter', type=int,
+                        action='store', dest='enter', default=None, nargs='?',
+                        const=4,
+                        metavar='WAIT_TIME',
+                        help='After x seconds delay, start entering with keyboard\n'
+                             'This is the time to switch to the app to receive keyboard strokes\n'
+                             'Default: %(const)s\n'
+                             'Note: Windows ONLY')
+
     options = parser.parse_args()
 
     main()
