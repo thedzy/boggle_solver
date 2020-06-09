@@ -2,6 +2,29 @@
 
 Find all the words in a given/generated puzzle using a dictionary of choice.
 
+```boggle_solver.py -s 4 -ao```
+
+Generate and solve  4x4 puzzle, display results alphabetically and ordered by size
+
+```
+WARNING: Max word length is 16
+Puzzle:
+b   s   w   e
+l   i   z   a
+e   f   q   g
+r   j   m   h
+========================================
+Words found that are contained in "./dictionary.hd"
+ | awe    | fie    | lis    | wis    | file   | lier   | wile   | swiler |
+ | bis    | fil    | qis    | wiz    | fils   | life   | filer  |
+ | biz    | fiz    | ref    | zag    | gaze   | reif   | flier  |
+ | elf    | gae    | rei    | bier   | isle   | reis   | lifer  |
+ | els    | lei    | sib    | bile   | leis   | size   | slier  |
+ | fer    | lib    | wae    | bize   | libs   | swag   | swile  |
+ | fib    | lie    | wag    | fibs   | lief   | wife   | gawsie |
+Found 50 words found between 3 and 16 characters in length and matching filters
+```
+
 ## What?
 
 Give the solver a puzzle and the parameter that it works in and get the results.
@@ -79,15 +102,17 @@ No known bugs.  Works.
 
 ## New
 ### 1.1
-I have made performance improvements by orders of magnitude.  From a 5x5 puzzle and finding words up to 9 in length taking minutes to 100x100 and 32 in length taking seconds.\
-Now uses a custom dictionary format, converter included.  Dictionary is now a hierarchy of letters, allowing fast searches for partial words.
-### 1.2 
-Added regex filtering to results
+- I have made performance improvements by orders of magnitude.  From a 5x5 puzzle and finding words up to 9 in length taking minutes to 100x100 and 32 in length taking seconds.\
+- Now uses a custom dictionary format, converter included.  Dictionary is now a hierarchy of letters, allowing fast searches for partial words.
+
+### 1.2
+- Added regex filtering to results
+
 ### 1.3
-Replaced the dictionary to better align with Wordament, old one still remains
-Made column mode the default with the ability to override
-Listing alphabetically is optional now, otherwise, will display in the order found
-Added option to list is ascending or descending size
-Added option to send key presses on Windows to enter the words into Wordament
-Fixed an issue in convert_dicitonary.py that caused it to require additional words
-If all letters are single, spaces are not required.  ex: -p a b c d e f g h i j k l m n o p  =>  -p abcdefghijklmnop
+- Replaced the dictionary to better align with Wordament, old one still remains
+- Made column mode the default with the ability to override
+- Listing alphabetically is optional now, otherwise, will display in the order found
+- Added option to list is ascending or descending size
+- Added option to send key presses on Windows to enter the words into Wordament
+- Fixed an issue in convert_dicitonary.py that caused it to require additional words
+- If all letters are single, spaces are not required.  ex: -p a b c d e f g h i j k l m n o p  =>  -p abcdefghijklmnop
