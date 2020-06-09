@@ -147,7 +147,7 @@ def main():
 
     # Print
     if len(words_valid) > 0:
-        if options.columns:
+        if not options.list:
             divider = ' | '
             try:
                 terminal_width, _ = os.get_terminal_size()
@@ -342,7 +342,7 @@ if __name__ == '__main__':
                         help='Display words ordered by size ascending, compatible with -a/--alpha'
                              '\nDefault: %(default)s')
     parser.add_argument('--list',
-                        action='store_false', dest='columns', default=True,
+                        action='store_true', dest='list', default=False,
                         help='Display as list instead of columns'
                              '\nDefault: %(default)s')
     parser.add_argument('-f', '--filter',
