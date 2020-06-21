@@ -13,22 +13,29 @@ Find all the words in a given/generated puzzle
 __author__ = "thedzy"
 __copyright__ = "Copyright 2020, thedzy"
 __license__ = "GPL"
-__version__ = "1.3"
+__version__ = "1.4"
 __maintainer__ = "thedzy"
 __email__ = "thedzy@hotmail.com"
-__status__ = "Developer"
+__status__ = "Development"
 
 import argparse
 import ctypes
 import math
 import os
 import pickle
+import platform
 import random
 import re
 import time
 
+SPEED_STEPS = 50
+
 
 def main():
+    if 'windows' in platform.platform().lower():
+        # Capture the window that we are starting with, if we return we can send interrupt
+        start_window = ctypes.windll.user32.GetForegroundWindow()
+
     # Load dictionary
     try:
         tree_dictionary = pickle.load(options.dictionary)
@@ -56,7 +63,7 @@ def main():
         letters = ''.join(chr(i + 97) for i in range(26))
         row_count = options.puzzle_size
         puzzle = []
-        for row in range(row_count):
+        for _ in range(row_count):
             puzzle.append(list(random.choice(letters) for _ in range(row_count)))
     else:
         puzzle_length = len(options.puzzle)
@@ -133,6 +140,15 @@ def main():
     words_valid = sorted(set(words_valid), key=words_valid.index)
     words_valid = list(filter(lambda word_valid: length_min <= len(word_valid) <= length_max, words_valid))
 
+    # If a contains filter is used
+    if options.filter_contains:
+        print('Filtering words with patterns "{}"{}'.format(', '.join(options.filter_contains), ' ' * 80))
+        pattern_list = ['^.*'] + ['(?=.*{})'.format(x) for x in options.filter_contains] + ['.*']
+        pattern2 = re.compile(''.join(pattern_list), re.IGNORECASE)
+        for word in words_valid[:]:
+            if not pattern2.fullmatch(word):
+                words_valid.remove(word)
+
     # If a filter is used
     if options.filter:
         print('Filtering with "{}" {}'.format(options.filter, ' ' * 80))
@@ -145,7 +161,7 @@ def main():
         words_valid.sort(key=len, reverse=options.order_size_r)
     print('Words found that are contained in "{}"{}'.format(options.dictionary.name, ' ' * 80))
 
-    # Print
+    # Print words
     if len(words_valid) > 0:
         if not options.list:
             divider = ' | '
@@ -188,35 +204,60 @@ def main():
 
     # If emulating keyboard
     if options.enter:
-        # Countdown to start
-        print('Starting typing in ', end='')
-        count_down_timer = options.enter + 1
-        for count_down in range(1, count_down_timer):
-            print(count_down_timer - count_down)
-            time.sleep(1)
-        print('Go!')
+        if 'windows' in platform.platform().lower():
+            # Countdown to start
+            print('Starting typing in ', end='')
+            count_down_timer = options.enter + 1
+            for count_down in range(1, count_down_timer):
+                print(count_down_timer - count_down)
+                time.sleep(1)
+            print('Go!')
 
-        # For each word, emulate typing
-        for word in words_valid:
-            for letter in word:
-                win_press_key(letter, 0.075)
-            win_press_key()
-            print('Entering:', word)
+            # For each word, emulate typing
+            speed = (SPEED_STEPS - options.speed) / SPEED_STEPS
+            for word in words_valid:
+                for letter in word:
+                    # If interrupting, check if we are back the window
+                    if not options.interrupt:
+                        focus_window = ctypes.windll.user32.GetForegroundWindow()
+                        if focus_window == start_window:
+                            exit()
 
-            # Pause between each word to give program time to score
-            time.sleep(1)
+                    # If speed is -1 random after every character giving a more human appearance
+                    if options.speed < 0:
+                        speed = random.random()
+
+                    win_press_key(letter, None, speed / 2)
+
+                # Send return
+                print('Entering:', word)
+                win_press_key(None, None, speed / 2)
+
+                # Pause between each word to give program time to score
+                time.sleep(speed)
 
 
-def win_press_key(key=None, hold_time=0.1):
+def win_press_key(key=None, modifier=None, hold_time=0.1):
     """
     Emulate a keyboard press, <enter> default
     :param key: (string) Single character to emulate
+    :param modifier: (string) Hold modifier key during key press
     :param hold_time: (int) Key hold time
     :return: (void)
     """
+    modifiers = {
+        'shift': 0x10,
+        'ctrl': 0x11,
+        'alt': 0x12,
+    }
+    # If no key, return
     code = ord(key.upper()) if key else 0x0D
+    if modifier:
+        ctypes.windll.user32.keybd_event(modifiers[modifier], 0, 0, 0)
     ctypes.windll.user32.keybd_event(code, 0, 0, 0)
     time.sleep(hold_time)
+    if modifier:
+        ctypes.windll.user32.keybd_event(modifiers[modifier], 0, 0x0002, 0)
     ctypes.windll.user32.keybd_event(code, 0, 0x0002, 0)
 
 
@@ -289,6 +330,29 @@ if __name__ == '__main__':
             return format_class
 
 
+    def number_range(low, high, obj_type=int):
+        """
+        Validate integer is between low and high values
+        :param low: (int) Low range
+        :param high: (int) High range
+        :param obj_type: (class) Data type, ex int, float
+        :return: argument, exception
+        """
+
+        def number_range_parser(argument):
+            try:
+                argument = obj_type(argument)
+            except ValueError:
+                argparse.ArgumentError('Must be of type {}'.format(obj_type.__name__))
+
+            if low <= argument <= high:
+                return argument
+            else:
+                parser.error('Value is not in the range of {} and {}'.format(low, high))
+
+        return number_range_parser
+
+
     parser = argparse.ArgumentParser(
         description='Will find all the words in a given/generated puzzle using a dictionary of choice.',
         formatter_class=parser_formatter(argparse.RawTextHelpFormatter, indent_increment=4, max_help_position=12,
@@ -296,60 +360,65 @@ if __name__ == '__main__':
 
     parser.add_argument('-l', '--length', type=int,
                         action='store', dest='length', default=None,
-                        help='Only a fixed length'
-                             '\nNote: Overrides minimum and maximum values')
-
-    parser.add_argument('-x', '--max', type=int,
+                        help='Only a fixed length\n'
+                             'Note: Overrides minimum and maximum values')
+    parser.add_argument('-M', '--max', type=int,
                         action='store', dest='length_max', default=None,
-                        help='Maximum word length, '
-                             '\nDefault: puzzle size (not recommended to use default)')
+                        help='Maximum word length \n'
+                             'Default: puzzle size or 32 whichever is less')
     parser.add_argument('-m', '--min', type=int,
                         action='store', dest='length_min', default=3,
-                        help='Minimum word length'
-                             '\nDefault: %(default)s')
+                        help='Minimum word length\n'
+                             'Default: %(default)s')
 
     # Dictionary/word/phrase
     parser.add_argument('-d', '--dict', type=argparse.FileType('rb'),
                         action='store', dest='dictionary',
                         default=os.path.join(os.path.dirname(__file__), 'dictionary.hd'),
-                        help='Dictionary file to use, in .hd format, See convert_dictionary.py'
-                             '\nDefault: %(default)s')
+                        help='Dictionary file to use, in .hd format, See convert_dictionary.py\n'
+                             'Default: %(default)s')
 
     # Puzzle
     parser.add_argument('-p', '--puzzle', dest='puzzle',
                         action='store', nargs='*',
-                        help='Puzzle in order of appearance, space separated, top-left to bottom-right'
-                             '\nDefault: randomly generated'
-                             '\nExample: a b c d e f g h qu')
-
+                        help='Puzzle in order of appearance, space separated, top-left to bottom-right\n'
+                             'Default: randomly generated\n'
+                             'Example: a b c d e f g h qu')
     parser.add_argument('-s', '--size', type=int,
                         action='store', dest='puzzle_size', default=4,
-                        help='Puzzle size if randomly generated randomly generated'
-                             '\nDefault: %(default)s'
-                             '\nExample: 4 is 4x4')
+                        help='Puzzle size if randomly generated randomly generated\n'
+                             'Default: %(default)s\n'
+                             'Example: 4 is 4x4')
 
     # Display
     parser.add_argument('-a', '--alpha',
                         action='store_true', dest='order_alpha', default=False,
-                        help='Display words ordered alphabetical'
-                             '\nDefault: %(default)s')
+                        help='Display words ordered alphabetical\n'
+                             'Default: %(default)s')
     parser.add_argument('-o', '--order-ascending',
                         action='store_true', dest='order_size', default=False,
-                        help='Display words ordered by size ascending, compatible with -a/--alpha'
-                             '\nDefault: %(default)s')
+                        help='Display words ordered by size ascending, compatible with -a/--alpha\n'
+                             'Default: %(default)s')
     parser.add_argument('-r', '--order-descending',
                         action='store_true', dest='order_size_r', default=False,
-                        help='Display words ordered by size ascending, compatible with -a/--alpha'
-                             '\nDefault: %(default)s')
+                        help='Display words ordered by size descending, compatible with -a/--alpha\n'
+                             'Default: %(default)s')
     parser.add_argument('--list',
                         action='store_true', dest='list', default=False,
-                        help='Display as list instead of columns'
-                             '\nDefault: %(default)s')
+                        help='Display as list instead of columns\n'
+                             'Default: %(default)s')
+    parser.add_argument('-C', '--contains',
+                        action='store', dest='filter_contains', default=None, nargs='+',
+                        metavar='PATTERN',
+                        help='Filter results containing the patterns in any order\n'
+                             'Example:\n'
+                             'te a s can find: teas and steady but not seats\n'
+                             'Default: %(default)s')
     parser.add_argument('-f', '--filter',
                         action='store', dest='filter', default=None,
                         metavar='REGEX',
-                        help='Filter results\n'
-                             'Note:Only exact matches are found. \n'
+                        help='Filter results after contains filter\n'
+                             'Note: Only exact matches are found. \n'
                              'Examples:\n'
                              'z will find only z, z.* will find all words beginning with z \n'
                              '.{3}|.{5} will find 3 or 5 letter words\n'
@@ -362,8 +431,19 @@ if __name__ == '__main__':
                         metavar='WAIT_TIME',
                         help='After x seconds delay, start entering with keyboard\n'
                              'This is the time to switch to the app to receive keyboard strokes\n'
+                             'WARNING: It is highly recommended that you leave your console window accessible\n'
                              'Default: %(const)s\n'
                              'Note: Windows ONLY')
+    parser.add_argument('-S', '--speed', type=number_range(-1, SPEED_STEPS),
+                        action='store', dest='speed', default=int(SPEED_STEPS * 0.95),
+                        help='Set the keyboard speed from -1 to {} when using -e/--enter \n'.format(SPEED_STEPS) +
+                             'Note: -1 will be interpreted as random between each action. \n'
+                             'Note: Some programs have issues with a very high speeds\n'
+                             'Default: %(default)s')
+    parser.add_argument('-i', '--interrupt-off',
+                        action='store_true', dest='interrupt', default=False,
+                        help='Do not exit when returning to the window where the code ran from when using -e/--enter \n'
+                             'Default: %(default)s')
 
     options = parser.parse_args()
 

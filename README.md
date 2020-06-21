@@ -115,4 +115,15 @@ No known bugs.  Works.
 - Added option to list is ascending or descending size
 - Added option to send key presses on Windows to enter the words into Wordament
 - Fixed an issue in convert_dicitonary.py that caused it to require additional words
-- If all letters are single, spaces are not required.  ex: -p a b c d e f g h i j k l m n o p  =>  -p abcdefghijklmnop
+- If all letters are single, spaces are not required.  ex: `-p a b c d e f g h i j k l m n o p`  =>  `-p abcdefghijklmnop`
+
+### 1.4
+- Made the keyboard entry speed settable as well as variable
+- Put in checks that keyboard entry only runs on Windows
+- By default if you return to where you started the code it will stop, instead of typing into the console window (optional off)
+- Changed parameter 'x' to 'M' after seeing Windows respects case
+- Added option `-C` to filter words that contain patterns or characters, simpler for those that don't know REGEX
+    - Can still use REGEX in addition to the above filter
+
+
+
