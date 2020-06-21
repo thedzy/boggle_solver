@@ -13,7 +13,7 @@ Find all the words in a given/generated puzzle
 __author__ = "thedzy"
 __copyright__ = "Copyright 2020, thedzy"
 __license__ = "GPL"
-__version__ = "1.4"
+__version__ = "1.4.1"
 __maintainer__ = "thedzy"
 __email__ = "thedzy@hotmail.com"
 __status__ = "Development"
@@ -354,96 +354,108 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser(
-        description='Will find all the words in a given/generated puzzle using a dictionary of choice.',
+        description='%(prog)s will find all the words in a given/generated puzzle using a dictionary of choice.',
         formatter_class=parser_formatter(argparse.RawTextHelpFormatter, indent_increment=4, max_help_position=12,
                                          width=160))
 
-    parser.add_argument('-l', '--length', type=int,
-                        action='store', dest='length', default=None,
-                        help='Only a fixed length\n'
-                             'Note: Overrides minimum and maximum values')
-    parser.add_argument('-M', '--max', type=int,
-                        action='store', dest='length_max', default=None,
-                        help='Maximum word length \n'
-                             'Default: puzzle size or 32 whichever is less')
-    parser.add_argument('-m', '--min', type=int,
-                        action='store', dest='length_min', default=3,
-                        help='Minimum word length\n'
-                             'Default: %(default)s')
-
     # Dictionary/word/phrase
-    parser.add_argument('-d', '--dict', type=argparse.FileType('rb'),
-                        action='store', dest='dictionary',
-                        default=os.path.join(os.path.dirname(__file__), 'dictionary.hd'),
-                        help='Dictionary file to use, in .hd format, See convert_dictionary.py\n'
-                             'Default: %(default)s')
+    dictionary_group = parser.add_argument_group(title='Dictionary',
+                                                 description=None)
+    dictionary_group.add_argument('-d', '--dict', type=argparse.FileType('rb'),
+                                  action='store', dest='dictionary',
+                                  default=os.path.join(os.path.dirname(__file__), 'dictionary.hd'),
+                                  help='Dictionary file to use, in .hd format, See convert_dictionary.py\n'
+                                       'Default: %(default)s')
 
     # Puzzle
-    parser.add_argument('-p', '--puzzle', dest='puzzle',
-                        action='store', nargs='*',
-                        help='Puzzle in order of appearance, space separated, top-left to bottom-right\n'
-                             'Default: randomly generated\n'
-                             'Example: a b c d e f g h qu')
-    parser.add_argument('-s', '--size', type=int,
-                        action='store', dest='puzzle_size', default=4,
-                        help='Puzzle size if randomly generated randomly generated\n'
-                             'Default: %(default)s\n'
-                             'Example: 4 is 4x4')
+    puzzle_group = parser.add_argument_group(title='Puzzle',
+                                             description='Specify or generate a puzzle')
+    puzzle_group.add_argument('-p', '--puzzle', dest='puzzle',
+                              action='store', nargs='*',
+                              help='Puzzle in order of appearance, space separated, top-left to bottom-right\n'
+                                   'Default: randomly generated\n'
+                                   'Example: a b c d e f g h qu')
+    puzzle_group.add_argument('-s', '--size', type=int,
+                              action='store', dest='puzzle_size', default=4,
+                              help='Puzzle size if randomly generated randomly generated\n'
+                                   'Default: %(default)s\n'
+                                   'Example: 4 is 4x4')
 
     # Display
-    parser.add_argument('-a', '--alpha',
-                        action='store_true', dest='order_alpha', default=False,
-                        help='Display words ordered alphabetical\n'
-                             'Default: %(default)s')
-    parser.add_argument('-o', '--order-ascending',
-                        action='store_true', dest='order_size', default=False,
-                        help='Display words ordered by size ascending, compatible with -a/--alpha\n'
-                             'Default: %(default)s')
-    parser.add_argument('-r', '--order-descending',
-                        action='store_true', dest='order_size_r', default=False,
-                        help='Display words ordered by size descending, compatible with -a/--alpha\n'
-                             'Default: %(default)s')
-    parser.add_argument('--list',
-                        action='store_true', dest='list', default=False,
-                        help='Display as list instead of columns\n'
-                             'Default: %(default)s')
-    parser.add_argument('-C', '--contains',
-                        action='store', dest='filter_contains', default=None, nargs='+',
-                        metavar='PATTERN',
-                        help='Filter results containing the patterns in any order\n'
-                             'Example:\n'
-                             'te a s can find: teas and steady but not seats\n'
-                             'Default: %(default)s')
-    parser.add_argument('-f', '--filter',
-                        action='store', dest='filter', default=None,
-                        metavar='REGEX',
-                        help='Filter results after contains filter\n'
-                             'Note: Only exact matches are found. \n'
-                             'Examples:\n'
-                             'z will find only z, z.* will find all words beginning with z \n'
-                             '.{3}|.{5} will find 3 or 5 letter words\n'
-                             'Default: %(default)s')
+    display_group = parser.add_argument_group(title='Display',
+                                              description='Viewing and sorting options')
+    display_group.add_argument('-a', '--alpha',
+                               action='store_true', dest='order_alpha', default=False,
+                               help='Display words ordered alphabetical\n'
+                                    'Default: %(default)s')
+    display_group.add_argument('-o', '--order-ascending',
+                               action='store_true', dest='order_size', default=False,
+                               help='Display words ordered by size ascending, compatible with -a/--alpha\n'
+                                    'Default: %(default)s')
+    display_group.add_argument('-r', '--order-descending',
+                               action='store_true', dest='order_size_r', default=False,
+                               help='Display words ordered by size descending, compatible with -a/--alpha\n'
+                                    'Default: %(default)s')
+    display_group.add_argument('--list',
+                               action='store_true', dest='list', default=False,
+                               help='Display as list instead of columns\n'
+                                    'Default: %(default)s')
+
+    # Filtering
+    filter_group = parser.add_argument_group(title='Filtering',
+                                             description='Filter down the results by length, contents and REGEX')
+    filter_group.add_argument('-l', '--length', type=int,
+                              action='store', dest='length', default=None,
+                              help='Only a fixed length\n'
+                                   'Note: Overrides minimum and maximum values')
+    filter_group.add_argument('-M', '--max', type=int,
+                              action='store', dest='length_max', default=None,
+                              help='Maximum word length \n'
+                                   'Default: puzzle size or 32 whichever is less')
+    filter_group.add_argument('-m', '--min', type=int,
+                              action='store', dest='length_min', default=3,
+                              help='Minimum word length\n'
+                                   'Default: %(default)s')
+    filter_group.add_argument('-C', '--contains',
+                              action='store', dest='filter_contains', default=None, nargs='+',
+                              metavar='PATTERN',
+                              help='Filter results containing the patterns in any order\n'
+                                   'Example:\n'
+                                   'te a s can find: teas and steady but not seats\n'
+                                   'Default: %(default)s')
+    filter_group.add_argument('-f', '--filter',
+                              action='store', dest='filter', default=None,
+                              metavar='REGEX',
+                              help='Filter results after contains filter\n'
+                                   'Note: Only exact matches are found. \n'
+                                   'Examples:\n'
+                                   'z will find only z, z.* will find all words beginning with z \n'
+                                   '.{3}|.{5} will find 3 or 5 letter words\n'
+                                   'Default: %(default)s')
 
     # Emulate the keyboard
-    parser.add_argument('-e', '--enter', type=int,
-                        action='store', dest='enter', default=None, nargs='?',
-                        const=4,
-                        metavar='WAIT_TIME',
-                        help='After x seconds delay, start entering with keyboard\n'
-                             'This is the time to switch to the app to receive keyboard strokes\n'
-                             'WARNING: It is highly recommended that you leave your console window accessible\n'
-                             'Default: %(const)s\n'
-                             'Note: Windows ONLY')
-    parser.add_argument('-S', '--speed', type=number_range(-1, SPEED_STEPS),
-                        action='store', dest='speed', default=int(SPEED_STEPS * 0.95),
-                        help='Set the keyboard speed from -1 to {} when using -e/--enter \n'.format(SPEED_STEPS) +
-                             'Note: -1 will be interpreted as random between each action. \n'
-                             'Note: Some programs have issues with a very high speeds\n'
-                             'Default: %(default)s')
-    parser.add_argument('-i', '--interrupt-off',
-                        action='store_true', dest='interrupt', default=False,
-                        help='Do not exit when returning to the window where the code ran from when using -e/--enter \n'
-                             'Default: %(default)s')
+    keyboard_group = parser.add_argument_group(title='Keyboard emulations',
+                                               description='Emulate key presses in Windows')
+    keyboard_group.add_argument('-e', '--enter', type=int,
+                                action='store', dest='enter', default=None, nargs='?',
+                                const=4,
+                                metavar='WAIT_TIME',
+                                help='After x seconds delay, start entering with keyboard\n'
+                                     'This is the time to switch to the app to receive keyboard strokes\n'
+                                     'WARNING: It is highly recommended that you leave your console window accessible\n'
+                                     'Default: %(const)s\n'
+                                     'Note: Windows ONLY')
+    keyboard_group.add_argument('-S', '--speed', type=number_range(-1, SPEED_STEPS),
+                                action='store', dest='speed', default=int(SPEED_STEPS * 0.95),
+                                help='Set the keyboard speed from -1 to {} when using -e/--enter \n'.format(
+                                    SPEED_STEPS) +
+                                     'Note: -1 will be interpreted as random between each action. \n'
+                                     'Note: Some programs have issues with a very high speeds\n'
+                                     'Default: %(default)s')
+    keyboard_group.add_argument('-i', '--interrupt-off',
+                                action='store_true', dest='interrupt', default=False,
+                                help='Do not exit when returning to the window where the code ran from when using -e/--enter \n'
+                                     'Default: %(default)s')
 
     options = parser.parse_args()
 
