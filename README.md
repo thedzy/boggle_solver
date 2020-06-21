@@ -32,26 +32,23 @@ Give the solver a puzzle and the parameter that it works in and get the results.
 Optionally, play the puzzle for you.
 
 ```
-usage: boggle_solver.py [-h] [-l LENGTH] [-x LENGTH_MAX] [-m LENGTH_MIN] [-d DICTIONARY] [-p [PUZZLE [PUZZLE ...]]] [-s PUZZLE_SIZE] [-a] [-o] [-r] [--list]
-                        [-f REGEX] [-e [WAIT_TIME]]
+usage: boggle_solver.py [-h] [-d DICTIONARY] [-p [PUZZLE [PUZZLE ...]]] [-s PUZZLE_SIZE] [-a] [-o] [-r] [--list] [-l LENGTH] [-M LENGTH_MAX] [-m LENGTH_MIN]
+                        [-C PATTERN [PATTERN ...]] [-f REGEX] [-e [WAIT_TIME]] [-S SPEED] [-i]
 
-Will find all the words in a given/generated puzzle using a dictionary of choice.
+boggle_solver.py will find all the words in a given/generated puzzle using a dictionary of choice.
 
 optional arguments:
     -h, --help
             show this help message and exit
-    -l LENGTH, --length LENGTH
-            Only a fixed length
-            Note: Overrides minimum and maximum values
-    -x LENGTH_MAX, --max LENGTH_MAX
-            Maximum word length,
-            Default: puzzle size (not recommended to use default)
-    -m LENGTH_MIN, --min LENGTH_MIN
-            Minimum word length
-            Default: 3
+
+Dictionary:
     -d DICTIONARY, --dict DICTIONARY
             Dictionary file to use, in .hd format, See convert_dictionary.py
             Default: ./dictionary.hd
+
+Puzzle:
+    Specify or generate a puzzle
+
     -p [PUZZLE [PUZZLE ...]], --puzzle [PUZZLE [PUZZLE ...]]
             Puzzle in order of appearance, space separated, top-left to bottom-right
             Default: randomly generated
@@ -60,6 +57,10 @@ optional arguments:
             Puzzle size if randomly generated randomly generated
             Default: 4
             Example: 4 is 4x4
+
+Display:
+    Viewing and sorting options
+
     -a, --alpha
             Display words ordered alphabetical
             Default: False
@@ -67,22 +68,53 @@ optional arguments:
             Display words ordered by size ascending, compatible with -a/--alpha
             Default: False
     -r, --order-descending
-            Display words ordered by size ascending, compatible with -a/--alpha
+            Display words ordered by size descending, compatible with -a/--alpha
             Default: False
     --list  Display as list instead of columns
-            Default: True
+            Default: False
+
+Filtering:
+    Filter down the results by length, contents and REGEX
+
+    -l LENGTH, --length LENGTH
+            Only a fixed length
+            Note: Overrides minimum and maximum values
+    -M LENGTH_MAX, --max LENGTH_MAX
+            Maximum word length
+            Default: puzzle size or 32 whichever is less
+    -m LENGTH_MIN, --min LENGTH_MIN
+            Minimum word length
+            Default: 3
+    -C PATTERN [PATTERN ...], --contains PATTERN [PATTERN ...]
+            Filter results containing the patterns in any order
+            Example:
+            te a s can find: teas and steady but not seats
+            Default: None
     -f REGEX, --filter REGEX
-            Filter results
-            Note:Only exact matches are found.
+            Filter results after contains filter
+            Note: Only exact matches are found.
             Examples:
             z will find only z, z.* will find all words beginning with z
             .{3}|.{5} will find 3 or 5 letter words
             Default: None
+
+Keyboard emulations:
+    Emulate key presses in Windows
+
     -e [WAIT_TIME], --enter [WAIT_TIME]
             After x seconds delay, start entering with keyboard
             This is the time to switch to the app to receive keyboard strokes
+            WARNING: It is highly recommended that you leave your console window accessible
             Default: 4
             Note: Windows ONLY
+    -S SPEED, --speed SPEED
+            Set the keyboard speed from -1 to 50 when using -e/--enter
+            Note: -1 will be interpreted as random between each action.
+            Note: Some programs have issues with a very high speeds
+            Default: 47
+    -i, --interrupt-off
+            Do not exit when returning to the window where the code ran from when using -e/--enter
+            Default: False
 ```
 
 ## Why?
@@ -93,9 +125,9 @@ Sometimes you just need to know your ideas work for sure.
 Only way to know for sure, was to do it.  So I did it.  Here it is.
 
 ## Improvements?
-While sorting the dictionary made huge improvements in speed, it is still a little slow when it gets into long words, big puzzles, or some combination of the two.
+While sorting the dictionary made huge improvements in speed, ~~it is still a little slow when it gets into long words, big puzzles, or some combination of the two.~~
 
-While I debated multithreading it, just to see the change, I ultimately decided that beyond just proving it could be done.  Solving all the starting points simultaneously would have a huge impact.
+While I debated multithreading it, just to see the change, I ultimately decided that beyond just proving it could be done.  Solving all the starting points simultaneously would have an ~~huge~~ impact.
 
 ## State?
 No known bugs.  Works.
@@ -124,6 +156,9 @@ No known bugs.  Works.
 - Changed parameter 'x' to 'M' after seeing Windows respects case
 - Added option `-C` to filter words that contain patterns or characters, simpler for those that don't know REGEX
     - Can still use REGEX in addition to the above filter
+    
+### 1.4.1
+- Cleaned up the help to make it more readable
 
 
 
