@@ -13,13 +13,13 @@ Converts a list of words to a hierarchy format for fast parsing
 __author__ = "thedzy"
 __copyright__ = "Copyright 2020, thedzy"
 __license__ = "GPL"
-__version__ = "1.1"
+__version__ = "1.1.1"
 __maintainer__ = "thedzy"
 __email__ = "thedzy@hotmail.com"
-__status__ = "Developer"
+__status__ = "Development"
 
-import pickle
 import argparse
+import pickle
 
 
 def main():
@@ -27,7 +27,7 @@ def main():
     tree_dictionary = {}
 
     # If given a source, then convert, otherwise load and test
-    if options.source is not None:
+    if options.dictionary is not None:
         print('Creating')
         words = options.source.readlines()
         options.source.close()
@@ -37,11 +37,15 @@ def main():
                 words.append(add_word + '\n')
 
         for word in words:
+            if not word.rstrip('\n').isalpha():
+                word = ''.join(char for char in word if char.isalnum())
             add_to_dictionary(tree_dictionary, word.lower())
 
         pickle.dump(tree_dictionary, options.dictionary)
     else:
-        tree_dictionary = pickle.load(options.dictionary)
+        test_dictionary = open(options.source.name, 'rb')
+        options.source.close()
+        tree_dictionary = pickle.load(test_dictionary)
 
     if options.word is not None:
         if options.exact:
@@ -92,7 +96,10 @@ if __name__ == '__main__':
         except TypeError:
             return format_class
 
-    parser = argparse.ArgumentParser(description='Convert a dictionary to a hierarchy dictionary',
+
+    parser = argparse.ArgumentParser(description='Convert a dictionary to a hierarchy dictionary\n'
+                                                 'If no destination, test the dictionary'
+                                                 'If you are looking for a dictionary check http://app.aspell.net/create',
                                      formatter_class=parser_formatter(
                                          argparse.RawTextHelpFormatter,
                                          indent_increment=4, max_help_position=12, width=160))
@@ -101,7 +108,8 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--source', type=argparse.FileType('r'),
                         action='store', dest='source', default=None,
                         metavar='PATH',
-                        help='Source dictionary to create the hierarchy dictionary from')
+                        help='Source dictionary to create the hierarchy dictionary from or test',
+                        required=True)
     parser.add_argument('-a', '--add',
                         action='store', dest='add_words', default=None, nargs='*',
                         metavar='ADDITIONAL_WORD',
@@ -111,8 +119,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--dictionary', type=argparse.FileType('wb+'),
                         action='store', dest='dictionary', default=None,
                         metavar='PATH',
-                        help='Dictionary to load or create',
-                        required=True)
+                        help='Dictionary to create')
 
     # Lookups
     parser.add_argument('-w', '--word',
@@ -121,8 +128,8 @@ if __name__ == '__main__':
                         help='Word or partial word to lookup')
     parser.add_argument('-e', '--exact',
                         action='store_true', dest='exact', default=False,
-                        help='Match only whole word'
-                             '\nDefault: %(default)s')
+                        help='Match only whole word\n'
+                             'Default: %(default)s')
 
     options = parser.parse_args()
 
