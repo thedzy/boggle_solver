@@ -13,7 +13,7 @@ Find all the words in a given/generated puzzle
 __author__ = "thedzy"
 __copyright__ = "Copyright 2020, thedzy"
 __license__ = "GPL"
-__version__ = "1.4.1"
+__version__ = "1.5.0"
 __maintainer__ = "thedzy"
 __email__ = "thedzy@hotmail.com"
 __status__ = "Development"
@@ -32,10 +32,21 @@ SPEED_STEPS = 50
 
 
 def main():
+    start_time = time.time()
+
     if 'windows' in platform.platform().lower():
         # Capture the window that we are starting with, if we return we can send interrupt
         start_window = ctypes.windll.user32.GetForegroundWindow()
 
+    # Get the width of the window
+    try:
+        terminal_width, _ = os.get_terminal_size()
+    except OSError:
+        terminal_width = 80
+
+    """
+    Processing options
+    """
     # Load dictionary
     try:
         tree_dictionary = pickle.load(options.dictionary)
@@ -48,6 +59,9 @@ def main():
         print('Error loading dictionary:')
         print('\t', err)
         exit()
+
+    # Get stat
+    dictionary_load_time = time.time() - start_time
 
     # Validate regex before continuing
     if options.filter:
@@ -76,7 +90,7 @@ def main():
 
         if int(row_count) != row_count:
             print('Puzzle must be square')
-            print('Size given is {}, should be 3, 9, 16, 25, ...'.format(puzzle_length))
+            print('Size given is {}, should be 4, 9, 16, 25, 36, 49, 64, 81, 100...'.format(puzzle_length))
             exit()
 
         row_count = int(row_count)
@@ -89,39 +103,46 @@ def main():
             puzzle.append(row)
 
     # Set the max/min length of a word
-    if options.length is None:
-        if options.length_max is None:
-            # Max word length of the puzzle size or 32, whichever is smaller
-            length_max = min(row_count ** 2, 32)
-            print('WARNING: Max word length is {}'.format(length_max))
-        else:
+    length_max = min(row_count ** 2, 32)
+    length_min = 3
+    if options.length:
+        length_min = length_max = options.length
+    else:
+        # Max word length of the puzzle size or 32, whichever is smaller
+        if options.length_max:
             length_max = options.length_max
 
-        if options.length_min is None:
-            length_min = 3
-        else:
+        if options.length_min:
             length_min = options.length_min
-    else:
-        length_min = options.length
-        length_max = options.length
 
+    # Validate length
     if length_max > (row_count ** 2):
         length_max = row_count ** 2
         print('Max length exceeds puzzle size, setting to {} instead'.format(length_max))
 
-    if length_min > length_max:
-        length_min = length_max
+    # Min cannot exceed max
+    length_min = length_max if length_min > length_max else length_min
 
-    if length_min < 1:
-        length_min = 1
+    # Get minimum search length by taking the minimum word and taking of the longest tile
+    puzzle_char_max_size = len(max(options.puzzle, key=len)) if options.puzzle else 1
+    length_search_min = length_min - puzzle_char_max_size + 1
+    length_search_min = 1 if length_search_min <= 1 else length_search_min
 
-    if length_max < 1:
-        length_max = 1
-
+    """
+    Print Puzzle
+    """
     # Show the puzzle so tht the user can see what is being solved
     print('Puzzle: ')
+    print('=' * (row_count * 4 - 3))
     print('\n'.join([''.join(['{:4}'.format(item) for item in row]) for row in puzzle]))
-    print('=' * 40)
+    print('=' * (row_count * 4 - 3))
+
+    """
+    Searching
+    """
+    # Setup a progressbar
+    bar_position = 0
+    bar_position_max = (row_count ** 2) * (length_max - length_search_min + 1)
 
     # Loop through to find the words
     words_valid = []
@@ -129,16 +150,23 @@ def main():
         for index_y in range(0, row_count):
             x, y = (index_x, index_y)
 
-            for length in range(1, length_max + 1):
-                words = []
-                print('Finding words starting with {} and of {} characters in length'.format(puzzle[x][y].upper(),
-                                                                                             length), end='\r')
-                get_words(x, y, length, puzzle[x][y], words, [(x, y)], puzzle, tree_dictionary)
-                words_valid.extend(words)
+            for length in range(length_search_min, length_max + 1):
+                bar_position += 1
+                progressbar(bar_position, bar_position_max, puzzle[x][y].upper(), terminal_width)
+                # Call to find words starting from and ending at
+                get_words(x, y, length, puzzle[x][y], words_valid, [(x, y)], puzzle, tree_dictionary)
+    print()
 
-    # Remove duplicates, filter and sort
+    search_time = time.time() - start_time
+
+    """
+    Sorting and filtering
+    """
+    # Remove duplicates
     words_valid = sorted(set(words_valid), key=words_valid.index)
+    # Filter lengths
     words_valid = list(filter(lambda word_valid: length_min <= len(word_valid) <= length_max, words_valid))
+
 
     # If a contains filter is used
     if options.filter_contains:
@@ -161,14 +189,14 @@ def main():
         words_valid.sort(key=len, reverse=options.order_size_r)
     print('Words found that are contained in "{}"{}'.format(options.dictionary.name, ' ' * 80))
 
+    """
+    Display results
+    """
     # Print words
     if len(words_valid) > 0:
         if not options.list:
             divider = ' | '
-            try:
-                terminal_width, _ = os.get_terminal_size()
-            except OSError:
-                terminal_width = 80
+
             column_width = len(max(words_valid, key=len)) + len(divider)
             columns = int(((terminal_width - 1) - len(divider)) / column_width)
             column_height = int(len(words_valid) / columns) + 1
@@ -194,15 +222,24 @@ def main():
         else:
             print('\n'.join(words_valid))
 
-    # Print word count
-    if length_min is length_max:
-        print('Found {} words found of {} characters in length and matching filters'.format(
-            len(words_valid), length_max))
-    else:
-        print('Found {} words found between {} and {} characters in length and matching filters'.format(
-            len(words_valid), length_min, length_max))
+    # Get runtime
+    total_time = time.time() - start_time
 
-    # If emulating keyboard
+    # Print word count and stats
+    if length_min is length_max:
+        print('Found {} words of {} characters in length and matching filters'.format(len(words_valid), length_max))
+    else:
+        print('Found {} words between {} and {} characters in length and matching filters'.format(
+            len(words_valid), length_min, length_max))
+    print('--')
+    print('Time to load dictionary   {:0.3f}s'.format(dictionary_load_time))
+    print('Time to search            {:0.3f}s'.format(search_time - dictionary_load_time))
+    print('Time to filter            {:0.3f}s'.format(total_time - search_time))
+    print('Total:                    {:0.3f}s'.format(total_time))
+
+    """
+    Keyboard emulation
+    """
     if options.enter:
         if 'windows' in platform.platform().lower():
             # Countdown to start
@@ -315,6 +352,22 @@ def lookup_word(dictionary, word):
     return True
 
 
+def progressbar(position=0, maximum=100, title='Loading', width=None):
+    """
+    Draw a very simple progress bar to the width specified
+    :param position: (int) Position relative to max value
+    :param maximum: (int) Max position
+    :param title: (str) Title at the end of the progress
+    :param width: (int) Display width of the bar
+    :return: void
+    """
+    bar_width = width - 3 - len(title)
+    bar_fill = int((position / maximum * bar_width))
+    bar_empty = bar_width - bar_fill
+
+    print('{}{} | {}'.format('█' * bar_fill, '░' * bar_empty, title), end='\r')
+
+
 if __name__ == '__main__':
 
     def parser_formatter(format_class, **kwargs):
@@ -408,11 +461,11 @@ if __name__ == '__main__':
                               action='store', dest='length', default=None,
                               help='Only a fixed length\n'
                                    'Note: Overrides minimum and maximum values')
-    filter_group.add_argument('-M', '--max', type=int,
+    filter_group.add_argument('-M', '--max', type=number_range(1, 32),
                               action='store', dest='length_max', default=None,
                               help='Maximum word length \n'
                                    'Default: puzzle size or 32 whichever is less')
-    filter_group.add_argument('-m', '--min', type=int,
+    filter_group.add_argument('-m', '--min', type=number_range(1, 32),
                               action='store', dest='length_min', default=3,
                               help='Minimum word length\n'
                                    'Default: %(default)s')
