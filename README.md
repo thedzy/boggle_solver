@@ -125,9 +125,10 @@ Sometimes you just need to know your ideas work for sure.
 Only way to know for sure, was to do it.  So I did it.  Here it is.
 
 ## Improvements?
-While sorting the dictionary made huge improvements in speed, ~~it is still a little slow when it gets into long words, big puzzles, or some combination of the two.~~
+~~While sorting the dictionary made huge improvements in speed, it is still a little slow when it gets into long words, big puzzles, or some combination of the two.~~
 
-While I debated multithreading it, just to see the change, I ultimately decided that beyond just proving it could be done.  Solving all the starting points simultaneously would have an ~~huge~~ impact.
+~~While I debated multithreading it, just to see the change, I ultimately decided that beyond just proving it could be done.  Solving all the starting points simultaneously would have an huge impact.~~ \
+Much to my surprise multithreading was slower.  The overhead of the thread management negated the gains. Added ~ %1 seconds to the time.
 
 ## State?
 No known bugs.  Works.
@@ -160,5 +161,13 @@ No known bugs.  Works.
 ### 1.4.1
 - Cleaned up the help to make it more readable
 
+### 1.5.0
+- Added a new dictionary from [Aspell](http://app.aspell.net/create)
+- Improved long word searched by reducing the amount of variance needed in the search length
+- Changed status to a progress bar to make it readable/usable
+- Code cleanup
 
+### New in convert_dictionary.py
 
+#### 1.1.1
+- Fixed read/write issue when testing a dictionary
