@@ -166,6 +166,10 @@ No known bugs.  Works.
 - Improved long word searched by reducing the amount of variance needed in the search length
 - Changed status to a progress bar to make it readable/usable
 - Code cleanup
+- 
+### 1.6.0
+- Added json output
+- Moved regex filtering to during word validation testing speeding up searches that have filters
 
 ### New in convert_dictionary.py
 
