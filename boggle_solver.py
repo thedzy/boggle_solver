@@ -27,6 +27,9 @@ import platform
 import random
 import re
 import time
+import json
+import string
+import sys
 
 SPEED_STEPS = 50
 
@@ -52,13 +55,10 @@ def main():
         tree_dictionary = pickle.load(options.dictionary)
         options.dictionary.close()
     except (UnicodeDecodeError, EOFError):
-        print('Dictionary may be corrupt or not a dictionary')
-        print('Verify file or reprocess dictionary')
-        exit()
+        print_error('Dictionary may be corrupt or not a dictionary',
+                    'Verify file or reprocess dictionary')
     except Exception as err:
-        print('Error loading dictionary:')
-        print('\t', err)
-        exit()
+        print_error('Error loading dictionary:', err)
 
     # Get stat
     dictionary_load_time = time.time() - start_time
@@ -68,13 +68,14 @@ def main():
         try:
             pattern = re.compile(options.filter, re.IGNORECASE)
         except re.error as err:
-            print('Error in regex statement:')
-            print('\t', err.msg.title())
-            exit()
+            print_error('Error in regex statement', err.msg.title())
 
     # Get/make the puzzle
     if options.puzzle is None:
-        letters = ''.join(chr(i + 97) for i in range(26))
+        letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g',
+                   'h', 'i', 'j', 'k', 'l', 'm', 'n',
+                   'o', 'p', 'qu', 'r', 's', 't', 'u',
+                   'v', 'w', 'x', 'y', 'z']
         row_count = options.puzzle_size
         puzzle = []
         for _ in range(row_count):
@@ -89,9 +90,8 @@ def main():
         row_count = math.sqrt(puzzle_length)
 
         if int(row_count) != row_count:
-            print('Puzzle must be square')
-            print('Size given is {}, should be 4, 9, 16, 25, 36, 49, 64, 81, 100...'.format(puzzle_length))
-            exit()
+            print_error('Puzzle must be square',
+                        f'Size given is {puzzle_length}, should be 4, 9, 16, 25, 36, 49, 64, 81, 100...')
 
         row_count = int(row_count)
 
@@ -128,14 +128,18 @@ def main():
     length_search_min = length_min - puzzle_char_max_size + 1
     length_search_min = 1 if length_search_min <= 1 else length_search_min
 
+    results = {'puzzle': puzzle, 'filter': options.filter, 'contains': options.filter_contains}
+
     """
     Print Puzzle
     """
     # Show the puzzle so tht the user can see what is being solved
-    print('Puzzle: ')
-    print('=' * (row_count * 4 - 3))
-    print('\n'.join([''.join(['{:4}'.format(item) for item in row]) for row in puzzle]))
-    print('=' * (row_count * 4 - 3))
+    if not options.json:
+        tile_size = len(max([y for x in puzzle for y in x], key=len)) + 1
+        print('Puzzle: ')
+        print('=' * ((row_count * tile_size) - 1))
+        print('\n'.join([''.join([f'{item:^{tile_size}}' for item in row]) for row in puzzle]))
+        print('=' * ((row_count * tile_size) - 1))
 
     """
     Searching
@@ -167,10 +171,12 @@ def main():
     # Filter lengths
     words_valid = list(filter(lambda word_valid: length_min <= len(word_valid) <= length_max, words_valid))
 
-
     # If a contains filter is used
     if options.filter_contains:
-        print('Filtering words with patterns "{}"{}'.format(', '.join(options.filter_contains), ' ' * 80))
+        if not options.json:
+            print('Filtering words with patterns "{}"{}'.format(', '.join(options.filter_contains), ' ' * 80))
+        else:
+            results['contains'] = options.filter_contains
         pattern_list = ['^.*'] + ['(?=.*{})'.format(x) for x in options.filter_contains] + ['.*']
         pattern2 = re.compile(''.join(pattern_list), re.IGNORECASE)
         for word in words_valid[:]:
@@ -179,19 +185,35 @@ def main():
 
     # If a filter is used
     if options.filter:
-        print('Filtering with "{}" {}'.format(options.filter, ' ' * 80))
-        for word in words_valid[:]:
-            if not pattern.fullmatch(word):
-                words_valid.remove(word)
+        if not options.json:
+            print('Filtering with "{}" {}'.format(options.filter, ' ' * 80))
+
     if options.order_alpha:
         words_valid.sort()
     if options.order_size or options.order_size_r:
         words_valid.sort(key=len, reverse=options.order_size_r)
-    print('Words found that are contained in "{}"{}'.format(options.dictionary.name, ' ' * 80))
+
+    if not options.json:
+        print('Words found that are contained in "{}"{}'.format(options.dictionary.name, ' ' * 80))
+
+    results['words'] = words_valid
+
+    # Get runtime
+    total_time = time.time() - start_time
 
     """
     Display results
     """
+    results['stats'] = {'puzzle_size': row_count,
+                        'word_count': len(words_valid),
+                        'dictionary_load_time': dictionary_load_time,
+                        'search_time': search_time,
+                        'total_time': total_time}
+
+    if options.json:
+        print(json.dumps(results))
+        return
+
     # Print words
     if len(words_valid) > 0:
         if not options.list:
@@ -221,9 +243,6 @@ def main():
                 print()
         else:
             print('\n'.join(words_valid))
-
-    # Get runtime
-    total_time = time.time() - start_time
 
     # Print word count and stats
     if length_min is length_max:
@@ -326,7 +345,11 @@ def get_words(x, y, length, word, words, used_squares, puzzle, dictionary):
                         new_used_squares = used_squares.copy()
                         new_used_squares.append((temp_x, temp_y))
                         # Check that part of the word is in the dictionary before continuing
-                        if lookup_word(dictionary, word + puzzle[temp_x][temp_y]):
+                        if options.filter:
+                            regex = re.match(options.filter, word)
+                        else:
+                            regex = True
+                        if lookup_word(dictionary, word + puzzle[temp_x][temp_y]) and regex:
                             get_words(temp_x, temp_y, length - 1, word + puzzle[temp_x][temp_y], words,
                                       new_used_squares, puzzle, dictionary)
 
@@ -365,7 +388,22 @@ def progressbar(position=0, maximum=100, title='Loading', width=None):
     bar_fill = int((position / maximum * bar_width))
     bar_empty = bar_width - bar_fill
 
-    print('{}{} | {}'.format('█' * bar_fill, '░' * bar_empty, title), end='\r')
+    print('{}{} | {}'.format('█' * bar_fill, '░' * bar_empty, title), end='\r', file=sys.stderr)
+
+
+def print_error(message, detail, exit_puzzle=True):
+    """
+    Print error message and exit
+    :param message: (string) Error message
+    :return: (void)
+    """
+    if options.json:
+        print(json.dumps({'error': message, 'detail': detail}))
+    else:
+        print(f'Error: {message}\n\t{detail}')
+
+    if exit_puzzle:
+        exit(1)
 
 
 if __name__ == '__main__':
@@ -453,6 +491,9 @@ if __name__ == '__main__':
                                action='store_true', dest='list', default=False,
                                help='Display as list instead of columns\n'
                                     'Default: %(default)s')
+    display_group.add_argument('--json',
+                               action='store_true', dest='json', default=False,
+                               help='Display as JSON\n')
 
     # Filtering
     filter_group = parser.add_argument_group(title='Filtering',
