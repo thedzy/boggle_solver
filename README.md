@@ -32,46 +32,49 @@ Give the solver a puzzle and the parameter that it works in and get the results.
 Optionally, play the puzzle for you.
 
 ```
-usage: boggle_solver.py [-h] [-d DICTIONARY] [-p [PUZZLE [PUZZLE ...]]] [-s PUZZLE_SIZE] [-a] [-o] [-r] [--list] [-l LENGTH] [-M LENGTH_MAX] [-m LENGTH_MIN]
-                        [-C PATTERN [PATTERN ...]] [-f REGEX] [-e [WAIT_TIME]] [-S SPEED] [-i]
+usage: boggle_solver.py [-h] [-d DICTIONARY] [-p [PUZZLE ...]] [--randomise] [-s PUZZLE_SIZE] [-a] [-o] [-r] [--list] [--json] [-l LENGTH] [-M LENGTH_MAX]
+                        [-m LENGTH_MIN] [-C PATTERN [PATTERN ...]] [-f REGEX] [-e [WAIT_TIME]] [-S SPEED] [-i]
 
 boggle_solver.py will find all the words in a given/generated puzzle using a dictionary of choice.
 
-optional arguments:
+options:
     -h, --help
             show this help message and exit
 
 Dictionary:
     -d DICTIONARY, --dict DICTIONARY
-            Dictionary file to use, in .hd format, See convert_dictionary.py
-            Default: ./dictionary.hd
+            dictionary file to use, in .hd format, See convert_dictionary.py
+            default: /Users/syoung/git/boggle_solver/dictionary.hd
 
 Puzzle:
     Specify or generate a puzzle
 
-    -p [PUZZLE [PUZZLE ...]], --puzzle [PUZZLE [PUZZLE ...]]
-            Puzzle in order of appearance, space separated, top-left to bottom-right
-            Default: randomly generated
-            Example: a b c d e f g h qu
+    -p [PUZZLE ...], --puzzle [PUZZLE ...]
+            puzzle in order of appearance, space separated, top-left to bottom-right
+            default: randomly generated
+            example: a b c d e f g h qu
+    --randomise
+            randomise specified puzzle letters
     -s PUZZLE_SIZE, --size PUZZLE_SIZE
-            Puzzle size if randomly generated randomly generated
-            Default: 4
-            Example: 4 is 4x4
+            puzzle size if randomly generated randomly generated
+            default: 4
+            example: 4 is 4x4
 
 Display:
     Viewing and sorting options
 
     -a, --alpha
-            Display words ordered alphabetical
-            Default: False
+            display words ordered alphabetical
+            default: False
     -o, --order-ascending
-            Display words ordered by size ascending, compatible with -a/--alpha
-            Default: False
+            display words ordered by size ascending, compatible with -a/--alpha
+            default: False
     -r, --order-descending
-            Display words ordered by size descending, compatible with -a/--alpha
-            Default: False
-    --list  Display as list instead of columns
-            Default: False
+            display words ordered by size descending, compatible with -a/--alpha
+            default: False
+    --list  display as list instead of columns
+            default: False
+    --json  display as JSON
 
 Filtering:
     Filter down the results by length, contents and REGEX
@@ -80,41 +83,46 @@ Filtering:
             Only a fixed length
             Note: Overrides minimum and maximum values
     -M LENGTH_MAX, --max LENGTH_MAX
-            Maximum word length
-            Default: puzzle size or 32 whichever is less
+            maximum word length
+            default: puzzle size or 32 whichever is less
     -m LENGTH_MIN, --min LENGTH_MIN
-            Minimum word length
-            Default: 3
+            minimum word length
+            default: 3
     -C PATTERN [PATTERN ...], --contains PATTERN [PATTERN ...]
-            Filter results containing the patterns in any order
-            Example:
+            filter results containing the patterns in any order
+            example:
             te a s can find: teas and steady but not seats
-            Default: None
+            default: None
     -f REGEX, --filter REGEX
-            Filter results after contains filter
-            Note: Only exact matches are found.
-            Examples:
+            filter results after contains filter
+            note: Only exact matches are found.
+            examples:
             z will find only z, z.* will find all words beginning with z
             .{3}|.{5} will find 3 or 5 letter words
-            Default: None
+            default: None
 
 Keyboard emulations:
     Emulate key presses in Windows
 
     -e [WAIT_TIME], --enter [WAIT_TIME]
-            After x seconds delay, start entering with keyboard
-            This is the time to switch to the app to receive keyboard strokes
+            after x seconds delay, start entering with keyboard
+            this is the time to switch to the app to receive keyboard strokes
             WARNING: It is highly recommended that you leave your console window accessible
-            Default: 4
-            Note: Windows ONLY
+            default: 4
+            note: Windows ONLY
     -S SPEED, --speed SPEED
-            Set the keyboard speed from -1 to 50 when using -e/--enter
-            Note: -1 will be interpreted as random between each action.
-            Note: Some programs have issues with a very high speeds
-            Default: 47
+            set the keyboard speed from -1 to 50 when using -e/--enter
+            note: -1 will be interpreted as random between each action.
+            note: some programs have issues with a very high speeds
+            default: 47
     -i, --interrupt-off
-            Do not exit when returning to the window where the code ran from when using -e/--enter
-            Default: False
+            do not exit when returning to the window where the code ran from when using -e/--enter
+            default: False
+```
+
+Benchmark
+```commandline
+SIZE=5; LOOPS=200; TIME=0; WORDS=0; for x in $(seq $LOOPS); do RESULTS=$(boggle_solver.py -s $SIZE --json); TIME=$((TIME+$(echo $RESULTS |jq .stats.search_time))); WORDS=$((WORDS+$(echo $RESULTS |jq '.words | length' ))); echo $x; done; echo Average pussle time: $((TIME/LOOPS)); echo Time per word: $((TIME/WORDS))
 ```
 
 ## Why?
@@ -129,6 +137,8 @@ Only way to know for sure, was to do it.  So I did it.  Here it is.
 
 ~~While I debated multithreading it, just to see the change, I ultimately decided that beyond just proving it could be done.  Solving all the starting points simultaneously would have an huge impact.~~ \
 Much to my surprise multithreading was slower.  The overhead of the thread management negated the gains. Added ~ %1 seconds to the time.
+
+Add an option to generate a puzzle based on the actual dies used in the game
 
 ## State?
 No known bugs.  Works.
@@ -170,6 +180,14 @@ No known bugs.  Works.
 ### 1.6.0
 - Added json output
 - Moved regex filtering to during word validation testing speeding up searches that have filters
+
+### 1.6.1
+- Modernisation
+  - Type hinting
+  - f-strings
+  - Clean up help
+- Randomisation of puzzle letters options
+- Inserts random characters when not a complete puzzle as opposed to alerting user for more characters
 
 ### New in convert_dictionary.py
 
