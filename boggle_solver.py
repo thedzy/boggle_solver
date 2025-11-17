@@ -88,7 +88,7 @@ def main() -> None:
         if not math.sqrt(puzzle_length).is_integer():
             root: int = math.ceil(root)
             missing_characters: int = (root * root) - len(options.puzzle)
-            print(f'Extending puzzle letters by {missing_characters} to make a puzzle')
+            print(f'Extending puzzle letters by {missing_characters} to make a puzzle', file=sys.stderr )
             for _ in range(missing_characters):
                 options.puzzle.append(random.choice(letters))
             puzzle_length: int = len(options.puzzle)
