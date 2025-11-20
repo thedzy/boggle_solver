@@ -125,6 +125,11 @@ Benchmark
 SIZE=5; LOOPS=200; TIME=0; WORDS=0; for x in $(seq $LOOPS); do RESULTS=$(boggle_solver.py -s $SIZE --json); TIME=$((TIME+$(echo $RESULTS |jq .stats.search_time))); WORDS=$((WORDS+$(echo $RESULTS |jq '.words | length' ))); echo $x; done; echo Average pussle time: $((TIME/LOOPS)); echo Time per word: $((TIME/WORDS))
 ```
 
+Find the best puzzle
+```commandline
+RECORD=0; while True; do RESULTS=$(~/git/boggle_solver/boggle_solver.py -S --json); LENGTH=$(echo $RESULTS | jq '.words | length'); echo $LENGTH; [ $LENGTH -gt $RECORD ] && RECORD=$LENGTH && echo $(echo $RESULTS | jq '.puzzle'); done
+```
+
 ## Why?
 Just about every time I am playing Microsoft Wordament® (boggle knockoff) I can't help but think that it would be an easy thing to code.  Originally, I imagined it similar to a maze solver and convinced that it could be done with little effort.
 
@@ -188,6 +193,17 @@ No known bugs.  Works.
   - Clean up help
 - Randomisation of puzzle letters options
 - Inserts random characters when not a complete puzzle as opposed to alerting user for more characters
+
+### 1.7.0
+- Option to use the standard english dice
+- Can use size with puzzle to specifying tiles that must appear
+- Randomly chooses characters giving weight to characters that appear more in English
+  - Prevents "x" and "qu" appearing as frequently as "e" or "s"
+- Added dictionary file to json output
+- Fixed the calculations of stats in json output
+- Added new stat in json, time_per_word
+- Added pretty print json output
+
 
 ### New in convert_dictionary.py
 

@@ -25,6 +25,7 @@ import math
 import os
 import pickle
 import platform
+import pprint
 import random
 import re
 import sys
@@ -46,6 +47,8 @@ def main() -> None:
         terminal_width, _ = os.get_terminal_size()
     except OSError:
         terminal_width: int = 80
+
+    printing = not any([options.json, options.pretty_json])
 
     """
     Processing options
@@ -71,43 +74,79 @@ def main() -> None:
             print_error('Error in regex statement', err.msg.title())
 
     # Get/make the puzzle
-    letters: list[str] = ['a', 'b', 'c', 'd', 'e', 'f', 'g',
-                          'h', 'i', 'j', 'k', 'l', 'm', 'n',
-                          'o', 'p', 'qu', 'r', 's', 't', 'u',
-                          'v', 'w', 'x', 'y', 'z']
-    if options.puzzle is None:
-        row_count: int = options.puzzle_size
-        puzzle: list[list[str]] = []
-        for _ in range(row_count):
-            puzzle.append(list(random.choice(letters) for _ in range(row_count)))
-    else:
-        puzzle_length: int = len(options.puzzle)
-        root: float = math.sqrt(puzzle_length)
+    if options.puzzle_standard:
+        dies: dict[int, list[str]] = {
+            0: ['A', 'A', 'E', 'E', 'G', 'N'],
+            1: ['A', 'B', 'B', 'J', 'O', 'O'],
+            2: ['A', 'C', 'H', 'O', 'P', 'S'],
+            3: ['A', 'F', 'F', 'K', 'P', 'S'],
+            4: ['A', 'O', 'O', 'T', 'T', 'W'],
+            5: ['C', 'I', 'M', 'O', 'T', 'U'],
+            6: ['D', 'E', 'I', 'L', 'R', 'X'],
+            7: ['D', 'E', 'L', 'R', 'V', 'Y'],
+            8: ['D', 'I', 'S', 'T', 'T', 'Y'],
+            9: ['E', 'E', 'G', 'H', 'N', 'W'],
+            10: ['E', 'E', 'I', 'N', 'S', 'U'],
+            11: ['E', 'H', 'R', 'T', 'V', 'W'],
+            12: ['E', 'I', 'O', 'S', 'S', 'T'],
+            13: ['E', 'L', 'R', 'T', 'T', 'Y'],
+            14: ['H', 'I', 'M', 'N', 'U', 'Qu'],
+            15: ['H', 'L', 'N', 'N', 'R', 'Z'],
+        }
 
-        # if puzzle is not a square kill in the necessary characters
-        if not math.sqrt(puzzle_length).is_integer():
-            root: int = math.ceil(root)
-            missing_characters: int = (root * root) - len(options.puzzle)
-            print(f'Extending puzzle letters by {missing_characters} to make a puzzle', file=sys.stderr )
-            for _ in range(missing_characters):
-                options.puzzle.append(random.choice(letters))
-            puzzle_length: int = len(options.puzzle)
+        puzzle_letters: list[str] = []
+        while len(dies) > 0:
+            random_index = random.choice(list(dies.keys()))
+            popped_die = dies.pop(random_index)
 
-        if options.randomise:
-            random.shuffle(options.puzzle)
-
-        # If length of one, lets assume they characters are not spaced
-        if puzzle_length == 1:
-            options.puzzle = list(options.puzzle[0])
-
-        row_count: int = int(root)
+            puzzle_letter: str = random.choice(popped_die)
+            puzzle_letters.append(puzzle_letter)
 
         puzzle: list[list[str]] = []
+        row_count: int = 4
+        random.shuffle(puzzle_letters)
         for puzzle_x in range(0, row_count):
             row: list[str] = []
             for puzzle_y in range(0, row_count):
-                row.append(options.puzzle[puzzle_x * row_count + puzzle_y].lower())
+                row.append(puzzle_letters[puzzle_x * row_count + puzzle_y].lower())
             puzzle.append(row)
+    else:
+        letters: list[str] = ['a', 'b', 'c', 'd', 'e', 'f', 'g',
+                              'h', 'i', 'j', 'k', 'l', 'm', 'n',
+                              'o', 'p', 'qu', 'r', 's', 't', 'u',
+                              'v', 'w', 'x', 'y', 'z']
+        # Weight the letters for the presence in the english language
+        weights: dict[str, float] = {
+            'a': 6.5, 'b': 1.2, 'c': 2.2, 'd': 3.4, 'e': 10,
+            'f': 1.7, 'g': 1.6, 'h': 4.8, 'i': 5.5, 'j': 0.2,
+            'k': 0.6, 'l': 3.1, 'm': 1.9, 'n': 5.3, 'o': 5.9,
+            'p': 1.5, 'q': 0.1, 'r': 4.7, 's': 6.3, 't': 7.2,
+            'u': 2.2, 'v': 0.8, 'w': 1.9, 'x': 0.2, 'y': 1.6, 'z': 0.3,
+        }
+
+        # Get size and generate missing tiles
+        puzzle_characters:list[str] = list(options.puzzle[0]) if len(options.puzzle) == 1 else options.puzzle
+        size:int = len(puzzle_characters) if len(options.puzzle) > options.puzzle_size ** 2 else options.puzzle_size ** 2
+
+        generator_count: int = size - len(puzzle_characters)
+        puzzle_characters.extend(random.choices(letters, weights=[w[1] for w in weights.items()], k=generator_count))
+
+        puzzle_length: int = len(puzzle_characters)
+        row_count: int = int(math.sqrt(puzzle_length))
+        if not math.sqrt(puzzle_length).is_integer():
+            row_count: int = math.ceil(math.sqrt(puzzle_length))
+            generator_count_square: int = (row_count**2) - len(puzzle_characters)
+            puzzle_characters.extend(random.choices(letters, weights=[w[1] for w in weights.items()], k=generator_count_square))
+            print(f'Extending puzzle letters by {generator_count_square} to make a puzzle', file=sys.stderr)
+
+        if options.randomise:
+            random.shuffle(puzzle_characters)
+
+        # Create a matrix of tiles
+        puzzle: list[list[str]] = []
+        for _ in range(row_count):
+            puzzle.append(puzzle_characters[0:row_count])
+            puzzle_characters = puzzle_characters[row_count:]
 
     # Set the max/min length of a word
     length_max: int = min(row_count ** 2, 32)
@@ -135,13 +174,13 @@ def main() -> None:
     length_search_min: int = length_min - puzzle_char_max_size + 1
     length_search_min: int = 1 if length_search_min <= 1 else length_search_min
 
-    results: dict[str, Any] = {'puzzle': puzzle, 'filter': options.filter, 'contains': options.filter_contains}
+    results: dict[str, Any] = {'puzzle': puzzle, 'filter': options.filter, 'contains': options.filter_contains, 'dictionary': options.dictionary.name}
 
     """
     Print Puzzle
     """
     # Show the puzzle so tht the user can see what is being solved
-    if not options.json:
+    if printing:
         tile_size: int = len(max([y for x in puzzle for y in x], key=len)) + 1
         print('Puzzle: ')
         print('=' * ((row_count * tile_size) - 1))
@@ -180,10 +219,9 @@ def main() -> None:
 
     # If a contains filter is used
     if options.filter_contains:
-        if not options.json:
+        if printing:
             print(f'Filtering words with patterns "{", ".join(options.filter_contains)}"{" " * 80}')
-        else:
-            results['contains'] = options.filter_contains
+        results['contains'] = options.filter_contains
         pattern_list = ['^.*'] + [f'(?=.*{x})' for x in options.filter_contains] + ['.*']
         pattern2 = re.compile(''.join(pattern_list), re.IGNORECASE)
         for word in words_valid[:]:
@@ -192,7 +230,7 @@ def main() -> None:
 
     # If a filter is used
     if options.filter:
-        if not options.json:
+        if printing:
             print(f'Filtering with "{options.filter}" {" " * 80}')
 
     if options.order_alpha:
@@ -200,7 +238,7 @@ def main() -> None:
     if options.order_size or options.order_size_r:
         words_valid.sort(key=len, reverse=options.order_size_r)
 
-    if not options.json:
+    if printing:
         print(f'Words found that are contained in "{options.dictionary.name}"{" " * 80}')
 
     results['words']: list[str] = words_valid
@@ -214,8 +252,12 @@ def main() -> None:
     results['stats']: dict[str, Any] = {'puzzle_size': row_count,
                                         'word_count': len(words_valid),
                                         'dictionary_load_time': dictionary_load_time,
-                                        'search_time': search_time,
+                                        'search_time': search_time - dictionary_load_time,
+                                        'time_per_word': 0.0 if len(words_valid) == 0 else (search_time - dictionary_load_time) / len(words_valid),
                                         'total_time': total_time}
+    if options.pretty_json:
+        pprint.pp(results)
+        return
 
     if options.json:
         print(json.dumps(results))
@@ -469,9 +511,9 @@ if __name__ == '__main__':
     # Puzzle
     puzzle_group = parser.add_argument_group(title='Puzzle',
                                              description='Specify or generate a puzzle')
-    puzzle_group.add_argument('-p', '--puzzle', dest='puzzle',
+    puzzle_group.add_argument('-p', '--puzzle', dest='puzzle', default=[],
                               action='store', nargs='*',
-                              help='puzzle in order of appearance, space separated, top-left to bottom-right\n'
+                              help='puzzle tiles in order of appearance, space separated, top-left to bottom-right\n'
                                    'default: randomly generated\n'
                                    'example: a b c d e f g h qu')
 
@@ -480,10 +522,14 @@ if __name__ == '__main__':
                               help='randomise specified puzzle letters')
 
     puzzle_group.add_argument('-s', '--size', type=int,
-                              action='store', dest='puzzle_size', default=4,
+                              action='store', dest='puzzle_size', default=1,
                               help='puzzle size if randomly generated randomly generated\n'
                                    'default: %(default)s\n'
                                    'example: 4 is 4x4')
+
+    puzzle_group.add_argument('-S', '--standard', default=False,
+                              action='store_true', dest='puzzle_standard',
+                              help='standard puzzle, consisting on 16 dies in 4x4 grid')
 
     # Display
     display_group = parser.add_argument_group(title='Display',
@@ -507,6 +553,9 @@ if __name__ == '__main__':
     display_group.add_argument('--json',
                                action='store_true', dest='json', default=False,
                                help='display as JSON\n')
+    display_group.add_argument('--pretty_json',
+                               action='store_true', dest='pretty_json', default=False,
+                               help='display as formatted JSON\n')
 
     # Filtering
     filter_group = parser.add_argument_group(title='Filtering',
@@ -552,7 +601,7 @@ if __name__ == '__main__':
                                      'WARNING: It is highly recommended that you leave your console window accessible\n'
                                      'default: %(const)s\n'
                                      'note: Windows ONLY')
-    keyboard_group.add_argument('-S', '--speed', type=number_range(-1, SPEED_STEPS),
+    keyboard_group.add_argument('--speed', type=number_range(-1, SPEED_STEPS),
                                 action='store', dest='speed', default=int(SPEED_STEPS * 0.95),
                                 help=f'set the keyboard speed from -1 to {SPEED_STEPS} when using -e/--enter \n'
                                      'note: -1 will be interpreted as random between each action. \n'
