@@ -32,8 +32,8 @@ Give the solver a puzzle and the parameter that it works in and get the results.
 Optionally, play the puzzle for you.
 
 ```
-usage: boggle_solver.py [-h] [-d DICTIONARY] [-p [PUZZLE ...]] [--randomise] [-s PUZZLE_SIZE] [-a] [-o] [-r] [--list] [--json] [-l LENGTH] [-M LENGTH_MAX]
-                        [-m LENGTH_MIN] [-C PATTERN [PATTERN ...]] [-f REGEX] [-e [WAIT_TIME]] [-S SPEED] [-i]
+usage: boggle_solver.py [-h] [-d DICTIONARY] [-p [PUZZLE ...]] [--randomise] [-s PUZZLE_SIZE] [-S] [-a] [-o] [-r] [--list] [--json] [--pretty_json] [-l LENGTH]
+                        [-M LENGTH_MAX] [-m LENGTH_MIN] [-C PATTERN [PATTERN ...]] [-f REGEX] [-e [WAIT_TIME]] [--speed SPEED] [-i]
 
 boggle_solver.py will find all the words in a given/generated puzzle using a dictionary of choice.
 
@@ -50,15 +50,17 @@ Puzzle:
     Specify or generate a puzzle
 
     -p [PUZZLE ...], --puzzle [PUZZLE ...]
-            puzzle in order of appearance, space separated, top-left to bottom-right
+            puzzle tiles in order of appearance, space separated, top-left to bottom-right
             default: randomly generated
             example: a b c d e f g h qu
     --randomise
             randomise specified puzzle letters
     -s PUZZLE_SIZE, --size PUZZLE_SIZE
             puzzle size if randomly generated randomly generated
-            default: 4
+            default: 1
             example: 4 is 4x4
+    -S, --standard
+            standard puzzle, consisting on 16 dies in 4x4 grid
 
 Display:
     Viewing and sorting options
@@ -75,6 +77,8 @@ Display:
     --list  display as list instead of columns
             default: False
     --json  display as JSON
+    --pretty_json
+            display as formatted JSON
 
 Filtering:
     Filter down the results by length, contents and REGEX
@@ -110,7 +114,7 @@ Keyboard emulations:
             WARNING: It is highly recommended that you leave your console window accessible
             default: 4
             note: Windows ONLY
-    -S SPEED, --speed SPEED
+    --speed SPEED
             set the keyboard speed from -1 to 50 when using -e/--enter
             note: -1 will be interpreted as random between each action.
             note: some programs have issues with a very high speeds
