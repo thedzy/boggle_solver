@@ -20,12 +20,12 @@ __status__ = "Development"
 
 import argparse
 import ctypes
+import csv
 import json
 import math
 import os
 import pickle
 import platform
-import pprint
 import random
 import re
 import sys
@@ -33,7 +33,6 @@ import time
 from typing import Any
 
 SPEED_STEPS = 50
-
 
 def main() -> None:
     start_time: float = time.time()
@@ -48,7 +47,7 @@ def main() -> None:
     except OSError:
         terminal_width: int = 80
 
-    printing = not any([options.json, options.pretty_json])
+    printing = not any([options.json, options.pretty_json, options.csv, options.minimal_csv])
 
     """
     Processing options
@@ -125,8 +124,15 @@ def main() -> None:
         }
 
         # Get size and generate missing tiles
-        puzzle_characters:list[str] = list(options.puzzle[0]) if len(options.puzzle) == 1 else options.puzzle
-        size:int = len(puzzle_characters) if len(options.puzzle) > options.puzzle_size ** 2 else options.puzzle_size ** 2
+        if options.puzzle_file:
+            file_characters = options.puzzle_file.read().lower()
+            filtered_characters = re.sub(r'[^A-Za-z\s]', '', file_characters)
+            puzzle_characters = re.split(r'\s+', filtered_characters.strip())
+        else:
+            puzzle_characters: list[str] = list(options.puzzle[0]) if len(options.puzzle) == 1 else options.puzzle
+            puzzle_characters = [re.sub(r'[^A-Za-z]', '', char) for char in puzzle_characters]
+            puzzle_characters = [char.lower() for char in puzzle_characters if len(char) > 0]
+        size: int = len(puzzle_characters) if len(options.puzzle) > options.puzzle_size ** 2 else options.puzzle_size ** 2
 
         generator_count: int = size - len(puzzle_characters)
         puzzle_characters.extend(random.choices(letters, weights=[w[1] for w in weights.items()], k=generator_count))
@@ -135,7 +141,7 @@ def main() -> None:
         row_count: int = int(math.sqrt(puzzle_length))
         if not math.sqrt(puzzle_length).is_integer():
             row_count: int = math.ceil(math.sqrt(puzzle_length))
-            generator_count_square: int = (row_count**2) - len(puzzle_characters)
+            generator_count_square: int = (row_count ** 2) - len(puzzle_characters)
             puzzle_characters.extend(random.choices(letters, weights=[w[1] for w in weights.items()], k=generator_count_square))
             print(f'Extending puzzle letters by {generator_count_square} to make a puzzle', file=sys.stderr)
 
@@ -204,7 +210,8 @@ def main() -> None:
                 bar_position += 1
                 progressbar(bar_position, bar_position_max, puzzle[x][y].upper(), terminal_width)
                 # Call to find words starting from and ending at
-                get_words(x, y, length, puzzle[x][y], words_valid, [(x, y)], puzzle, tree_dictionary)
+                regex_compile: re.Pattern[str] | None = re.compile(r'^m[a-z]+') if options.filter else None
+                get_words(x, y, length, puzzle[x][y], words_valid, [(x, y)], puzzle, tree_dictionary, regex_compile)
     print()
 
     search_time = time.time() - start_time
@@ -213,7 +220,8 @@ def main() -> None:
     Sorting and filtering
     """
     # Remove duplicates
-    words_valid: list[str] = sorted(set(words_valid), key=words_valid.index)
+    if options.remove_duplicates:
+        words_valid = sorted(dict.fromkeys(words_valid).keys())
     # Filter lengths
     words_valid: list[str] = list(filter(lambda word_valid: length_min <= len(word_valid) <= length_max, words_valid))
 
@@ -254,13 +262,38 @@ def main() -> None:
                                         'dictionary_load_time': dictionary_load_time,
                                         'search_time': search_time - dictionary_load_time,
                                         'time_per_word': 0.0 if len(words_valid) == 0 else (search_time - dictionary_load_time) / len(words_valid),
+                                        'word_lokups':  lookup_word.get_count(),
                                         'total_time': total_time}
     if options.pretty_json:
-        pprint.pp(results)
+        print(json.dumps(results, indent=2))
         return
 
     if options.json:
         print(json.dumps(results))
+        return
+
+    if options.csv:
+        writer = csv.writer(options.csv)
+
+        writer.writerow(['puzzle'])
+        for grid_row in results['puzzle']:
+            writer.writerow(grid_row)
+
+        writer.writerow([''])
+        writer.writerow(['words'])
+        for word in results['words']:
+            writer.writerow([word])
+
+        writer.writerow([''])
+        writer.writerow(['stats'])
+        for stats_key, stats_value in results['stats'].items():
+            writer.writerow([stats_key, stats_value])
+        return
+
+    if options.minimal_csv:
+        writer = csv.writer(options.minimal_csv)
+        for word in results['words']:
+            writer.writerow([word])
         return
 
     # Print words
@@ -294,16 +327,16 @@ def main() -> None:
             print('\n'.join(words_valid))
 
     # Print word count and stats
+    print(f'Total dictionary lookups {lookup_word.get_count():,}')
     if length_min is length_max:
-        print(f'Found {len(words_valid)} words of {length_max} characters in length and matching filters')
+        print(f'Found {len(words_valid)} {"unique" if options.remove_duplicates else "total"} word(s) of {length_max} characters in length and matching filters')
     else:
-        print(f'Found {len(words_valid)} words between {length_min} and {length_max} characters in length and matching filters')
+        print(f'Found {len(words_valid):,} {"unique" if options.remove_duplicates else "total"} word(s) between {length_min} and {length_max} characters in length and matching filters')
     print('--')
-    print(f'Time to load dictionary   {dictionary_load_time:0.3f}s')
-    print(f'Time to search            {search_time - dictionary_load_time:0.3f}s')
-    print(f'Time to filter            {total_time - search_time:0.3f}s')
-    print(f'Total:                    {total_time:0.3f}s')
-
+    print(f'Time to load dictionary  {dictionary_load_time:12.3f}s')
+    print(f'Time to search           {search_time - dictionary_load_time:12.3f}s')
+    print(f'Time to filter           {total_time - search_time:12.3f}s')
+    print(f'Total:                   {total_time:12.3f}s')
     """
     Keyboard emulation
     """
@@ -340,6 +373,16 @@ def main() -> None:
                 # Pause between each word to give program time to score
                 time.sleep(speed)
 
+def count_calls(func):
+    call_count = 0
+
+    def wrapper(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        return func(*args, **kwargs)
+
+    wrapper.get_count = lambda: call_count
+    return wrapper
 
 def win_press_key(key: str | None = None, modifier: str | None = None, hold_time: float = 0.1) -> None:
     """
@@ -365,7 +408,11 @@ def win_press_key(key: str | None = None, modifier: str | None = None, hold_time
     ctypes.windll.user32.keybd_event(code, 0, 0x0002, 0)
 
 
-def get_words(x: int, y: int, length: int, word: str, words: list[str], used_squares: list[tuple], puzzle: list[list[str]], dictionary: dict[str, Any]) -> None:
+def get_words(x: int, y: int, length: int,
+              word: str, words: list[str],
+              used_squares: list[tuple], puzzle: list[list[str]],
+              dictionary: dict[str, Any],
+              regex_compile: re.Pattern[str] | None = None):
     """
     Get a word starting from a position and to a length
     Note: Recursive
@@ -377,6 +424,7 @@ def get_words(x: int, y: int, length: int, word: str, words: list[str], used_squ
     :param used_squares: For recursion, track used positions
     :param puzzle: Puzzle matrix
     :param dictionary: Hierarchy dictionary
+    :param regex_compile: regex to match
     :return: (void)
     """
     row_count = len(puzzle)
@@ -393,21 +441,27 @@ def get_words(x: int, y: int, length: int, word: str, words: list[str], used_squ
                         new_used_squares: list[tuple] = used_squares.copy()
                         new_used_squares.append((temp_x, temp_y))
                         # Check that part of the word is in the dictionary before continuing
-                        if options.filter:
-                            regex: re.Match[str] = re.match(options.filter, word)
-                        else:
-                            regex: bool = True
-                        if lookup_word(dictionary, word + puzzle[temp_x][temp_y]) and regex:
-                            get_words(temp_x, temp_y, length - 1, word + puzzle[temp_x][temp_y], words,
-                                      new_used_squares, puzzle, dictionary)
+                        if regex_compile:
+                            regex: regex_compile.Match[str] = re.match(options.filter, word)
+                            if not regex:
+                                return
+                        if lookup_word(dictionary, word + puzzle[temp_x][temp_y]):
+                            get_words(
+                                x=temp_x, y=temp_y, length=length - 1,
+                                word=word + puzzle[temp_x][temp_y], words=words,
+                                used_squares=new_used_squares,
+                                puzzle=puzzle, dictionary=dictionary,
+                                regex_compile=regex_compile
+                            )
 
     # Append the word to the list
-    if length <= 1:
+    if length <= 1 and length <= options.length_min:
         if lookup_word(dictionary, word + '\n'):
             words.append(word)
         return
+    return
 
-
+@count_calls
 def lookup_word(dictionary: dict[str, str | dict], word: str) -> bool:
     """
     Find full or partial record of word in dictionary
@@ -415,10 +469,10 @@ def lookup_word(dictionary: dict[str, str | dict], word: str) -> bool:
     :param word: String to locate
     :return: Found
     """
+    trie_node: dict[str, str | dict] = dictionary
     for letter in word:
-        try:
-            dictionary = dictionary[letter]
-        except KeyError:
+        trie_node: [dict | None] = trie_node.get(letter)
+        if trie_node is None:
             return False
     return True
 
@@ -511,11 +565,20 @@ if __name__ == '__main__':
     # Puzzle
     puzzle_group = parser.add_argument_group(title='Puzzle',
                                              description='Specify or generate a puzzle')
-    puzzle_group.add_argument('-p', '--puzzle', dest='puzzle', default=[],
-                              action='store', nargs='*',
-                              help='puzzle tiles in order of appearance, space separated, top-left to bottom-right\n'
-                                   'default: randomly generated\n'
-                                   'example: a b c d e f g h qu')
+    puzzle_parser = puzzle_group.add_mutually_exclusive_group()
+    puzzle_parser.add_argument('-p', '--puzzle', dest='puzzle', default=[],
+                               action='store', nargs='*',
+                               help='puzzle tiles in order of appearance, space separated, top-left to bottom-right\n'
+                                    'default: randomly generated\n'
+                                    'example: a b c d e f g h qu')
+
+    puzzle_parser.add_argument('-S', '--standard', default=False,
+                               action='store_true', dest='puzzle_standard',
+                               help='standard puzzle, consisting on 16 dies in 4x4 grid')
+
+    puzzle_parser.add_argument('--puzzle-file', type=argparse.FileType(),
+                               action='store', dest='puzzle_file',
+                               help='load a file of characters, will filter for characters and split on spaces')
 
     puzzle_group.add_argument('--randomise', dest='randomise',
                               action='store_true',
@@ -526,10 +589,6 @@ if __name__ == '__main__':
                               help='puzzle size if randomly generated randomly generated\n'
                                    'default: %(default)s\n'
                                    'example: 4 is 4x4')
-
-    puzzle_group.add_argument('-S', '--standard', default=False,
-                              action='store_true', dest='puzzle_standard',
-                              help='standard puzzle, consisting on 16 dies in 4x4 grid')
 
     # Display
     display_group = parser.add_argument_group(title='Display',
@@ -550,12 +609,19 @@ if __name__ == '__main__':
                                action='store_true', dest='list', default=False,
                                help='display as list instead of columns\n'
                                     'default: %(default)s')
-    display_group.add_argument('--json',
-                               action='store_true', dest='json', default=False,
-                               help='display as JSON\n')
-    display_group.add_argument('--pretty_json',
-                               action='store_true', dest='pretty_json', default=False,
-                               help='display as formatted JSON\n')
+    display_parser = display_group.add_mutually_exclusive_group()
+    display_parser.add_argument('--json',
+                                action='store_true', dest='json', default=False,
+                                help='display as JSON')
+    display_parser.add_argument('--pretty-json',
+                                action='store_true', dest='pretty_json', default=False,
+                                help='display as formatted JSON')
+    display_parser.add_argument('--csv', type=argparse.FileType('w+'),
+                                action='store', dest='csv', default=None,
+                                help='export as csv')
+    display_parser.add_argument('--minimal-csv', type=argparse.FileType('w+'),
+                                action='store', dest='minimal_csv', default=None,
+                                help='export words as csv')
 
     # Filtering
     filter_group = parser.add_argument_group(title='Filtering',
@@ -588,6 +654,9 @@ if __name__ == '__main__':
                                    'z will find only z, z.* will find all words beginning with z \n'
                                    '.{3}|.{5} will find 3 or 5 letter words\n'
                                    'default: %(default)s')
+    filter_group.add_argument('--keep-duplicates',
+                              action='store_false', dest='remove_duplicates', default=True,
+                              help='keep duplicates in found words for raw word count and/or performance stats')
 
     # Emulate the keyboard
     keyboard_group = parser.add_argument_group(title='Keyboard emulations',
