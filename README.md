@@ -7,22 +7,38 @@ Find all the words in a given/generated puzzle using a dictionary of choice.
 Generate and solve  4x4 puzzle, display results alphabetically and ordered by size
 
 ```
-WARNING: Max word length is 16
 Puzzle:
-b   s   w   e
-l   i   z   a
-e   f   q   g
-r   j   m   h
-========================================
-Words found that are contained in "./dictionary.hd"
- | awe    | fie    | lis    | wis    | file   | lier   | wile   | swiler |
- | bis    | fil    | qis    | wiz    | fils   | life   | filer  |
- | biz    | fiz    | ref    | zag    | gaze   | reif   | flier  |
- | elf    | gae    | rei    | bier   | isle   | reis   | lifer  |
- | els    | lei    | sib    | bile   | leis   | size   | slier  |
- | fer    | lib    | wae    | bize   | libs   | swag   | swile  |
- | fib    | lie    | wag    | fibs   | lief   | wife   | gawsie |
-Found 50 words found between 3 and 16 characters in length and matching filters
+=======
+v h l a
+s t l d
+n o n a
+g e d h
+=======
+████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████ | H
+Words found that are contained in "/Users/syoung/git/boggle_solver/dictionary.hd"
+ | ado      | dos      | log      | son      | dent     | gens     | loge     | snog     | aland    | hadal    | tonal    | soldan   |
+ | ala      | dot      | lot      | sot      | dhal     | gent     | lone     | snot     | alane    | halal    | toned    | stoned   |
+ | all      | edh      | nah      | tod      | doge     | gold     | long     | soda     | alant    | halon    | adland   | tolane   |
+ | alt      | ego      | neg      | toe      | doll     | gone     | lost     | sola     | allod    | halos    | alants   | tonged   |
+ | and      | end      | nod      | tog      | dolt     | gosh     | loth     | sold     | allot    | halts    | allots   | allonge  |
+ | ane      | eng      | nog      | ton      | dona     | goth     | lots     | sone     | alone    | hants    | anenst   | daltons  |
+ | ant      | ens      | nos      | ados     | done     | hade     | nada     | song     | along    | laden    | dalton   | endlong  |
+ | dad      | eon      | not      | alan     | dong     | hall     | nala     | soth     | altos    | llano    | enhalo   | enhalos  |
+ | dah      | ged      | nth      | aloe     | dons     | halo     | neon     | toed     | anent    | loden    | haloed   | gonadal  |
+ | dal      | gen      | oda      | alto     | dosh     | halt     | node     | tola     | anode    | longe    | halons   | halogen  |
+ | dan      | god      | ode      | alts     | dost     | hand     | nona     | told     | dados    | neons    | ladens   | halogens |
+ | den      | gos      | old      | anon     | doth     | hant     | none     | toll     | dents    | nodal    | llanos   |
+ | doe      | got      | one      | ants     | dots     | lade     | nosh     | tone     | dolts    | solan    | lodens   |
+ | dog      | had      | ons      | dada     | egos     | land     | odah     | tong     | gents    | sonde    | longed   |
+ | dol      | lad      | sod      | dado     | enol     | lane     | olla     | tons     | gonad    | stone    | shlong   |
+ | don      | lah      | sol      | dens     | eons     | lode     | sned     | tosh     | goths    | tolan    | soland   |
+Total dictionary lookups 38,565
+Found 187 unique word(s) between 3 and 16 characters in length and matching filters
+--
+Time to load dictionary         0.169s
+Time to search                  0.021s
+Time to filter                  0.000s
+Total:                          0.190s
 ```
 
 ## What?
@@ -32,8 +48,9 @@ Give the solver a puzzle and the parameter that it works in and get the results.
 Optionally, play the puzzle for you.
 
 ```
-usage: boggle_solver.py [-h] [-d DICTIONARY] [-p [PUZZLE ...]] [--randomise] [-s PUZZLE_SIZE] [-S] [-a] [-o] [-r] [--list] [--json] [--pretty_json] [-l LENGTH]
-                        [-M LENGTH_MAX] [-m LENGTH_MIN] [-C PATTERN [PATTERN ...]] [-f REGEX] [-e [WAIT_TIME]] [--speed SPEED] [-i]
+usage: boggle_solver.py [-h] [-d DICTIONARY] [-p [PUZZLE ...] | -S | --puzzle-file PUZZLE_FILE] [--randomise] [-s PUZZLE_SIZE] [-a] [-o] [-r] [--list]
+                        [--json | --pretty-json | --csv CSV | --minimal-csv MINIMAL_CSV] [-l LENGTH] [-M LENGTH_MAX] [-m LENGTH_MIN] [-C PATTERN [PATTERN ...]]
+                        [-f REGEX] [--keep-duplicates] [-e [WAIT_TIME]] [--speed SPEED] [-i]
 
 boggle_solver.py will find all the words in a given/generated puzzle using a dictionary of choice.
 
@@ -53,14 +70,16 @@ Puzzle:
             puzzle tiles in order of appearance, space separated, top-left to bottom-right
             default: randomly generated
             example: a b c d e f g h qu
+    -S, --standard
+            standard puzzle, consisting on 16 dies in 4x4 grid
+    --puzzle-file PUZZLE_FILE
+            load a file of characters, will filter for characters and split on spaces
     --randomise
             randomise specified puzzle letters
     -s PUZZLE_SIZE, --size PUZZLE_SIZE
             puzzle size if randomly generated randomly generated
             default: 1
             example: 4 is 4x4
-    -S, --standard
-            standard puzzle, consisting on 16 dies in 4x4 grid
 
 Display:
     Viewing and sorting options
@@ -77,8 +96,12 @@ Display:
     --list  display as list instead of columns
             default: False
     --json  display as JSON
-    --pretty_json
+    --pretty-json
             display as formatted JSON
+    --csv CSV
+            export as csv
+    --minimal-csv MINIMAL_CSV
+            export words as csv
 
 Filtering:
     Filter down the results by length, contents and REGEX
@@ -87,7 +110,7 @@ Filtering:
             Only a fixed length
             Note: Overrides minimum and maximum values
     -M LENGTH_MAX, --max LENGTH_MAX
-            maximum word length
+            maximum word length 
             default: puzzle size or 32 whichever is less
     -m LENGTH_MIN, --min LENGTH_MIN
             minimum word length
@@ -99,11 +122,13 @@ Filtering:
             default: None
     -f REGEX, --filter REGEX
             filter results after contains filter
-            note: Only exact matches are found.
+            note: Only exact matches are found. 
             examples:
-            z will find only z, z.* will find all words beginning with z
+            z will find only z, z.* will find all words beginning with z 
             .{3}|.{5} will find 3 or 5 letter words
             default: None
+    --keep-duplicates
+            keep duplicates in found words for raw word count and/or performance stats
 
 Keyboard emulations:
     Emulate key presses in Windows
@@ -115,13 +140,14 @@ Keyboard emulations:
             default: 4
             note: Windows ONLY
     --speed SPEED
-            set the keyboard speed from -1 to 50 when using -e/--enter
-            note: -1 will be interpreted as random between each action.
+            set the keyboard speed from -1 to 50 when using -e/--enter 
+            note: -1 will be interpreted as random between each action. 
             note: some programs have issues with a very high speeds
             default: 47
     -i, --interrupt-off
-            do not exit when returning to the window where the code ran from when using -e/--enter
+            do not exit when returning to the window where the code ran from when using -e/--enter 
             default: False
+
 ```
 
 Benchmark
@@ -131,7 +157,7 @@ SIZE=5; LOOPS=200; TIME=0; WORDS=0; for x in $(seq $LOOPS); do RESULTS=$(boggle_
 
 Find the best puzzle
 ```commandline
-RECORD=0; while True; do RESULTS=$(~/git/boggle_solver/boggle_solver.py -S --json); LENGTH=$(echo $RESULTS | jq '.words | length'); echo $LENGTH; [ $LENGTH -gt $RECORD ] && RECORD=$LENGTH && echo $(echo $RESULTS | jq '.puzzle'); done
+RECORD=0; while True; do RESULTS=$(boggle_solver.py -S --json); LENGTH=$(echo $RESULTS | jq '.words | length'); echo $LENGTH; [ $LENGTH -gt $RECORD ] && RECORD=$LENGTH && echo $(echo $RESULTS | jq '.puzzle'); done
 ```
 
 ## Why?
@@ -146,8 +172,6 @@ Only way to know for sure, was to do it.  So I did it.  Here it is.
 
 ~~While I debated multithreading it, just to see the change, I ultimately decided that beyond just proving it could be done.  Solving all the starting points simultaneously would have an huge impact.~~ \
 Much to my surprise multithreading was slower.  The overhead of the thread management negated the gains. Added ~ %1 seconds to the time.
-
-Add an option to generate a puzzle based on the actual dies used in the game
 
 ## State?
 No known bugs.  Works.
@@ -208,6 +232,22 @@ No known bugs.  Works.
 - Added new stat in json, time_per_word
 - Added pretty print json output
 
+### 1.8.0
+- Speed optimisations
+  - Faster sorting
+  - Search speed optimisations, about 15-30% faster
+  - Filtering is about (maybe) 0.5 % faster, negligible
+  - Faster search when using a minimum length
+- Refined formating of text output
+- Corrected option pretty_json to pretty-json
+  - also proper json formating
+- New options 
+  - All duplicate in results options
+  - Load a puzzle file option
+  - Export 2 csv
+- Filtering for non-ascii characters in puzzle option
+- Added stat for how many full/partial words were looked up in the dictionary
+- Included benchmarking puzzle file [puzzle.dat](puzzle.dat)
 
 ### New in convert_dictionary.py
 
