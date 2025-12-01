@@ -247,7 +247,16 @@ No known bugs.  Works.
   - Export 2 csv
 - Filtering for non-ascii characters in puzzle option
 - Added stat for how many full/partial words were looked up in the dictionary
-- Included benchmarking puzzle file [puzzle.dat](puzzle.dat)
+- Included benchmarking puzzle file [puzzle.dat](benchmark/puzzle32.dat)
+
+### 1.8.1
+- Spelling correction of "word_lokups" -> "word_lookups"
+- Benchmark tests
+  - Moved puzzle.dat -> benchmark/puzzle32.dat
+  - Created a benchmark/puzzle64.dat
+  - Created a benchmark/puzzle128.dat
+  - Created 2 scripts to benchmark, a sh (earlier) and a python, significantly better
+  - Doc
 
 ### New in convert_dictionary.py
 

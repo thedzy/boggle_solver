@@ -262,7 +262,7 @@ def main() -> None:
                                         'dictionary_load_time': dictionary_load_time,
                                         'search_time': search_time - dictionary_load_time,
                                         'time_per_word': 0.0 if len(words_valid) == 0 else (search_time - dictionary_load_time) / len(words_valid),
-                                        'word_lokups':  lookup_word.get_count(),
+                                        'word_lookups':  lookup_word.get_count(),
                                         'total_time': total_time}
     if options.pretty_json:
         print(json.dumps(results, indent=2))
