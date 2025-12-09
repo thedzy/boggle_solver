@@ -258,6 +258,29 @@ No known bugs.  Works.
   - Created 2 scripts to benchmark, a sh (earlier) and a python, significantly better
   - Doc
 
+### 1.8.2
+- Removed unintended sorting when filtering originals
+- Added a `total_word_count` to json output regardless of options
+- Added a puzzle
+  - clusters.txt, example: `boggle_solver.py -s 12 --puzzle-file puzzle_files/clusters.txt --randomise`
+```
+  Puzzle:
+===============================================
+ d   s   o   e   p   o   o   t   e   h   s   t
+ o   g   t   c   t   i   n   h  thr  d   m   m
+ fl  u   o   pl  a   a   cr  m   r   a   h  shr
+ o   a   m   x   bl  sk  c  scr  sn  t   h   fr
+ l   n   e   e   sl  e   a   r   l   e   f   gl
+ tw str  e   v   n   r   l   e   k   sp  f   o
+ sw  d   l   r   tr  k   t   e   w   g   gr  dr
+ n   e   cl  n   w   n   w   k   c   c   o   sm
+ t   st  h   o   d   f   e   l   n   pr  j   w
+ h   l   l   i   n   i   i   r   t   s   l   o
+ r  spl  s   e   e   sc  a   a   b   br  r   o
+ c   o   e  spr  n   b   n   s   u   l   b   a
+===============================================
+```
+
 ### New in convert_dictionary.py
 
 #### 1.1.1

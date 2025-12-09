@@ -19,8 +19,8 @@ __email__ = "thedzy@hotmail.com"
 __status__ = "Development"
 
 import argparse
-import ctypes
 import csv
+import ctypes
 import json
 import math
 import os
@@ -33,6 +33,7 @@ import time
 from typing import Any
 
 SPEED_STEPS = 50
+
 
 def main() -> None:
     start_time: float = time.time()
@@ -220,8 +221,9 @@ def main() -> None:
     Sorting and filtering
     """
     # Remove duplicates
+    raw_count: int = len(words_valid)
     if options.remove_duplicates:
-        words_valid = sorted(dict.fromkeys(words_valid).keys())
+        words_valid: list[str] = list(dict.fromkeys(words_valid).keys())
     # Filter lengths
     words_valid: list[str] = list(filter(lambda word_valid: length_min <= len(word_valid) <= length_max, words_valid))
 
@@ -258,11 +260,12 @@ def main() -> None:
     Display results
     """
     results['stats']: dict[str, Any] = {'puzzle_size': row_count,
+                                        'total_word_count': raw_count,
                                         'word_count': len(words_valid),
                                         'dictionary_load_time': dictionary_load_time,
                                         'search_time': search_time - dictionary_load_time,
                                         'time_per_word': 0.0 if len(words_valid) == 0 else (search_time - dictionary_load_time) / len(words_valid),
-                                        'word_lookups':  lookup_word.get_count(),
+                                        'word_lookups': lookup_word.get_count(),
                                         'total_time': total_time}
     if options.pretty_json:
         print(json.dumps(results, indent=2))
@@ -373,6 +376,7 @@ def main() -> None:
                 # Pause between each word to give program time to score
                 time.sleep(speed)
 
+
 def count_calls(func):
     call_count = 0
 
@@ -383,6 +387,7 @@ def count_calls(func):
 
     wrapper.get_count = lambda: call_count
     return wrapper
+
 
 def win_press_key(key: str | None = None, modifier: str | None = None, hold_time: float = 0.1) -> None:
     """
@@ -460,6 +465,7 @@ def get_words(x: int, y: int, length: int,
             words.append(word)
         return
     return
+
 
 @count_calls
 def lookup_word(dictionary: dict[str, str | dict], word: str) -> bool:
