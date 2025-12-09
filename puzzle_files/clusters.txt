@@ -1,0 +1,3 @@
+bl, cl, fl, gl, pl, sl, br, cr, dr, fr, gr, pr, tr, sc, sk, sm, sn, sp, st, sw, tw
+spl, spr, str, scr, shr, thr
+
