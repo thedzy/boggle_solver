@@ -103,15 +103,6 @@ def create_logger(name: str = __file__, levels: dict[str, Any] = {}) -> logging.
                 'class': 'logging.StreamHandler',
                 'formatter': 'stderr',
                 'stream': 'ext://sys.stderr',
-            },
-            'file': {
-                'class': 'logging.handlers.RotatingFileHandler',
-                'formatter': 'file',
-                'filename': options.log_file if options.log_file else '/dev/null',
-                'maxBytes': 1024 * 5
-                ,
-                'backupCount': 0
-
             }
         },
         'loggers': {
@@ -123,9 +114,6 @@ def create_logger(name: str = __file__, levels: dict[str, Any] = {}) -> logging.
             }
         }
     }
-
-    if options.log_file is not None:
-        logging_config['loggers'][name]['handlers'].append('file')
 
     logging.config.dictConfig(logging_config)
 
@@ -177,11 +165,6 @@ if __name__ == '__main__':
     parser.add_argument('--debug', default=False,
                         action='store_true', dest='debug',
                         help=argparse.SUPPRESS)
-
-    # Output
-    parser.add_argument('--log', type=valid_path, default=None,
-                        action='store', dest='log_file',
-                        help='output log')
 
     options: argparse.Namespace = parser.parse_args()
 
