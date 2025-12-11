@@ -281,7 +281,17 @@ No known bugs.  Works.
 ===============================================
 ```
 
+### 1.9.0
+- Added the ability to simulate keyboard input on mac like windows
+
 ### New in convert_dictionary.py
 
 #### 1.1.1
 - Fixed read/write issue when testing a dictionary
+
+#### 2.0
+- What started as an update became an overhaul
+  - Added support for hunspell dictionaries *.dic
+  - Type hinting
+  - Improved lookup function for solver
+  - Reorganising parameters

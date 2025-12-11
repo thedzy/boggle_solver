@@ -31,7 +31,13 @@ import re
 import sys
 import time
 from typing import Any
+from importlib import reload
 
+try:
+    from Quartz import CGEventCreateKeyboardEvent, CGEventPost, kCGHIDEventTap
+    from AppKit import NSWorkspace, NSRunLoop, NSDate, NSDefaultRunLoopMode
+except:
+    pass
 SPEED_STEPS = 50
 
 
@@ -344,17 +350,18 @@ def main() -> None:
     Keyboard emulation
     """
     if options.enter:
-        if 'windows' in platform.platform().lower():
-            # Countdown to start
-            print('Starting typing in ', end='')
-            count_down_timer = options.enter + 1
-            for count_down in range(1, count_down_timer):
-                print(count_down_timer - count_down)
-                time.sleep(1)
-            print('Go!')
+        # Countdown to start
+        print('Starting typing in ', end='')
+        count_down_timer = options.enter + 1
+        for count_down in range(1, count_down_timer):
+            print(count_down_timer - count_down)
+            time.sleep(1)
+        print('Go!')
 
+        speed = (SPEED_STEPS - options.speed) / SPEED_STEPS
+
+        if 'windows' in platform.platform().lower():
             # For each word, emulate typing
-            speed = (SPEED_STEPS - options.speed) / SPEED_STEPS
             for word in words_valid:
                 for letter in word:
                     # If interrupting, check if we are back the window
@@ -375,6 +382,23 @@ def main() -> None:
 
                 # Pause between each word to give program time to score
                 time.sleep(speed)
+        if 'macos' in platform.platform().lower():
+            if 'Quartz' not in sys.modules or 'AppKit' not in sys.modules:
+                print('Keyboard injection unavailable on macOS, requires "Quartz" and "AppKit" modules')
+                return
+            start_window = mac_foreground_app()
+            for word in words_valid:
+                for letter in word:
+                    if not options.interrupt:
+                        current_bundle_id = mac_foreground_app()
+                        if current_bundle_id != start_window:
+                            print(f'Focus lost from {start_window}, aborting typing')
+                            return
+
+                    mac_press_key(letter, speed / 2)
+
+                mac_press_key('\n', speed / 2)
+                time.sleep(speed)
 
 
 def count_calls(func):
@@ -387,6 +411,51 @@ def count_calls(func):
 
     wrapper.get_count = lambda: call_count
     return wrapper
+
+
+def mac_foreground_app() -> str | None:
+    """
+    Return the bundle identifier of the current macOS foreground application.
+    :return: bundleid
+    """
+    NSRunLoop.currentRunLoop().runMode_beforeDate_(
+        NSDefaultRunLoopMode,
+        NSDate.distantPast()
+    )
+
+    active_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+    if active_app is None:
+        return None
+    return active_app.bundleIdentifier()
+
+
+def mac_press_key(character: str, hold_time: float) -> None:
+    """
+    Emulate a keyboard press, <enter> default
+    :param character: Single character to emulate
+    :param hold_time: Key hold time
+    :return: (void)
+    """
+    mac_keycodes = {
+        'a': 0, 'b': 11, 'c': 8, 'd': 2, 'e': 14, 'f': 3,
+        'g': 5, 'h': 4, 'i': 34, 'j': 38, 'k': 40, 'l': 37,
+        'm': 46, 'n': 45, 'o': 31, 'p': 35, 'q': 12, 'r': 15,
+        's': 1, 't': 17, 'u': 32, 'v': 9, 'w': 13, 'x': 7,
+        'y': 16, 'z': 6,
+        '\n': 36, '\r': 36,
+    }
+
+    key_char: str = character.lower()
+    key_code: int | None = mac_keycodes.get(key_char)
+    if key_code is None:
+        print(f'Unsupported character for macOS keycode: {repr(character)}')
+        return
+
+    event_down: Any = CGEventCreateKeyboardEvent(None, key_code, True)
+    event_up: Any = CGEventCreateKeyboardEvent(None, key_code, False)
+    CGEventPost(kCGHIDEventTap, event_down)
+    CGEventPost(kCGHIDEventTap, event_up)
+    time.sleep(hold_time)
 
 
 def win_press_key(key: str | None = None, modifier: str | None = None, hold_time: float = 0.1) -> None:
@@ -531,7 +600,7 @@ if __name__ == '__main__':
             return format_class
 
 
-    def number_range(low: int, high: int, obj_type: type = int) -> Any:
+    def number_range(low: int, high: int, obj_type: type = float) -> Any:
         """
         Validate integer is between low and high values
         :param low: Low range
