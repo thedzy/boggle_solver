@@ -284,6 +284,16 @@ No known bugs.  Works.
 ### 1.9.0
 - Added the ability to simulate keyboard input on mac like windows
 
+### 1.9.1
+- Saves last dictionary, speed and time to enter the next window as the defaults for the next run
+  - You no longer need to specify then everytime
+- Moved default dictionary to dictionaries folder `dictionary.hd` -> `dictionaries/default.hd`
+- Cleaned up the helkp and changed a few options 
+  - `-C` -> `-c`, contains
+  - `-r` -> `-O`, reverse order
+  - `-r`, became the options for randomise
+  - `-D`, keep duplicates
+
 ### New in convert_dictionary.py
 
 #### 1.1.1

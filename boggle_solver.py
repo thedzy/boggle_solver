@@ -30,8 +30,9 @@ import random
 import re
 import sys
 import time
+from configparser import ConfigParser
+from pathlib import Path
 from typing import Any
-from importlib import reload
 
 try:
     from Quartz import CGEventCreateKeyboardEvent, CGEventPost, kCGHIDEventTap
@@ -623,6 +624,14 @@ if __name__ == '__main__':
         return number_range_parser
 
 
+    # Load options
+    settings_path: Path = Path(__file__).parent.joinpath('config.ini')
+    config = ConfigParser()
+    config.read_dict(dict(options=dict()))
+    if settings_path.exists():
+        config.read(settings_path)
+
+    # Load options
     parser = argparse.ArgumentParser(
         description='%(prog)s will find all the words in a given/generated puzzle using a dictionary of choice.',
         formatter_class=parser_formatter(argparse.RawTextHelpFormatter, indent_increment=4, max_help_position=12,
@@ -633,7 +642,7 @@ if __name__ == '__main__':
                                                  description=None)
     dictionary_group.add_argument('-d', '--dict', type=argparse.FileType('rb'),
                                   action='store', dest='dictionary',
-                                  default=os.path.join(os.path.dirname(__file__), 'dictionary.hd'),
+                                  default=config['options'].get('dictionary', Path(__file__).parent.joinpath('dictionaries', 'default.hd').as_posix()),
                                   help='dictionary file to use, in .hd format, See convert_dictionary.py\n'
                                        'default: %(default)s')
 
@@ -655,12 +664,12 @@ if __name__ == '__main__':
                                action='store', dest='puzzle_file',
                                help='load a file of characters, will filter for characters and split on spaces')
 
-    puzzle_group.add_argument('--randomise', dest='randomise',
+    puzzle_group.add_argument('-r', '--randomise', dest='randomise',
                               action='store_true',
                               help='randomise specified puzzle letters')
 
     puzzle_group.add_argument('-s', '--size', type=int,
-                              action='store', dest='puzzle_size', default=1,
+                              action='store', dest='puzzle_size', default=2,
                               help='puzzle size if randomly generated randomly generated\n'
                                    'default: %(default)s\n'
                                    'example: 4 is 4x4')
@@ -676,7 +685,7 @@ if __name__ == '__main__':
                                action='store_true', dest='order_size', default=False,
                                help='display words ordered by size ascending, compatible with -a/--alpha\n'
                                     'default: %(default)s')
-    display_group.add_argument('-r', '--order-descending',
+    display_group.add_argument('-O', '--order-descending',
                                action='store_true', dest='order_size_r', default=False,
                                help='display words ordered by size descending, compatible with -a/--alpha\n'
                                     'default: %(default)s')
@@ -703,8 +712,8 @@ if __name__ == '__main__':
                                              description='Filter down the results by length, contents and REGEX')
     filter_group.add_argument('-l', '--length', type=int,
                               action='store', dest='length', default=None,
-                              help='Only a fixed length\n'
-                                   'Note: Overrides minimum and maximum values')
+                              help='only a fixed length\n'
+                                   'note: Overrides minimum and maximum values')
     filter_group.add_argument('-M', '--max', type=number_range(1, 32),
                               action='store', dest='length_max', default=None,
                               help='maximum word length \n'
@@ -713,12 +722,12 @@ if __name__ == '__main__':
                               action='store', dest='length_min', default=3,
                               help='minimum word length\n'
                                    'default: %(default)s')
-    filter_group.add_argument('-C', '--contains',
+    filter_group.add_argument('-c', '--contains',
                               action='store', dest='filter_contains', default=None, nargs='+',
                               metavar='PATTERN',
                               help='filter results containing the patterns in any order\n'
                                    'example:\n'
-                                   'te a s can find: teas and steady but not seats\n'
+                                   '\tte a s can find: teas and steady but not seats\n'
                                    'default: %(default)s')
     filter_group.add_argument('-f', '--filter',
                               action='store', dest='filter', default=None,
@@ -726,36 +735,45 @@ if __name__ == '__main__':
                               help='filter results after contains filter\n'
                                    'note: Only exact matches are found. \n'
                                    'examples:\n'
-                                   'z will find only z, z.* will find all words beginning with z \n'
-                                   '.{3}|.{5} will find 3 or 5 letter words\n'
+                                   '\tz will find only z, z.* will find all words beginning with z \n'
+                                   '\t.{3}|.{5} will find 3 or 5 letter words\n'
                                    'default: %(default)s')
-    filter_group.add_argument('--keep-duplicates',
+    filter_group.add_argument('-D', '--keep-duplicates',
                               action='store_false', dest='remove_duplicates', default=True,
                               help='keep duplicates in found words for raw word count and/or performance stats')
 
     # Emulate the keyboard
     keyboard_group = parser.add_argument_group(title='Keyboard emulations',
-                                               description='Emulate key presses in Windows')
+                                               description='Emulate key presses')
     keyboard_group.add_argument('-e', '--enter', type=int,
                                 action='store', dest='enter', default=None, nargs='?',
-                                const=4,
+                                const=int(config['options'].get('enter', '4')),
                                 metavar='WAIT_TIME',
                                 help='after x seconds delay, start entering with keyboard\n'
                                      'this is the time to switch to the app to receive keyboard strokes\n'
                                      'WARNING: It is highly recommended that you leave your console window accessible\n'
-                                     'default: %(const)s\n'
-                                     'note: Windows ONLY')
+                                     'default: %(const)s')
     keyboard_group.add_argument('--speed', type=number_range(-1, SPEED_STEPS),
-                                action='store', dest='speed', default=int(SPEED_STEPS * 0.95),
+                                action='store', dest='speed', default=float(config['options'].get('speed', int(SPEED_STEPS * 0.95))),
                                 help=f'set the keyboard speed from -1 to {SPEED_STEPS} when using -e/--enter \n'
                                      'note: -1 will be interpreted as random between each action. \n'
                                      'note: some programs have issues with a very high speeds\n'
                                      'default: %(default)s')
     keyboard_group.add_argument('-i', '--interrupt-off',
                                 action='store_true', dest='interrupt', default=False,
-                                help='do not exit when returning to the window where the code ran from when using -e/--enter \n'
+                                help='on Windows: do not exit when returning to the window where the code ran from when using -e/--enter \n'
+                                     'on macOS:   do not exit when leaving the windows which is entering the key presses -e/--enter \n'
                                      'default: %(default)s')
 
     options = parser.parse_args()
+
+    # Save options
+    config.setdefault('options', {}).setdefault('dictionary', options.dictionary.name)
+    config.setdefault('options', {}).setdefault('speed', str(options.speed))
+    if options.enter is not None:
+        config.setdefault('options', {}).setdefault('enter', str(options.enter))
+
+    with settings_path.open('w+', encoding='utf-8') as target_file:
+        config.write(target_file)
 
     main()
