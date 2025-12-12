@@ -768,10 +768,11 @@ if __name__ == '__main__':
     options = parser.parse_args()
 
     # Save options
-    config.setdefault('options', {}).setdefault('dictionary', options.dictionary.name)
-    config.setdefault('options', {}).setdefault('speed', str(options.speed))
+    config.setdefault('options', {})
+    config['options']['dictionary'] = options.dictionary.name
+    config['options']['speed'] = str(options.speed)
     if options.enter is not None:
-        config.setdefault('options', {}).setdefault('enter', str(options.enter))
+        config['options']['enter'] = str(options.enter)
 
     with settings_path.open('w+', encoding='utf-8') as target_file:
         config.write(target_file)
