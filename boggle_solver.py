@@ -178,7 +178,7 @@ def main() -> None:
     # Validate length
     if length_max > (row_count ** 2):
         length_max: int = row_count ** 2
-        print(f'Max length exceeds puzzle size, setting to {length_max} instead')
+        print(f'Max length exceeds puzzle size, setting to {length_max} instead', file=sys.stderr)
 
     # Min cannot exceed max
     length_min: int = length_max if length_min > length_max else length_min
@@ -206,20 +206,19 @@ def main() -> None:
     """
     # Setup a progressbar
     bar_position: int = 0
-    bar_position_max: int = (row_count ** 2) * (length_max - length_search_min + 1)
+    bar_position_max: int = (row_count ** 2)
+    puzzle_char_max_size = max(len(cell) for row in puzzle for cell in row)
 
     # Loop through to find the words
     words_valid: list[str] = []
     for index_x in range(0, row_count):
         for index_y in range(0, row_count):
             x, y = (index_x, index_y)
-
-            for length in range(length_search_min, length_max + 1):
-                bar_position += 1
-                progressbar(bar_position, bar_position_max, puzzle[x][y].upper(), terminal_width)
-                # Call to find words starting from and ending at
-                regex_compile: re.Pattern[str] | None = re.compile(r'^m[a-z]+') if options.filter else None
-                get_words(x, y, length, puzzle[x][y], words_valid, [(x, y)], puzzle, tree_dictionary, regex_compile)
+            bar_position += 1
+            progressbar(bar_position, bar_position_max, puzzle[x][y].upper(), terminal_width)
+            # Call to find words starting from and ending at
+            regex_compile: re.Pattern[str] | None = re.compile(r'^m[a-z]+') if options.filter else None
+            get_words(x, y, max((1, options.length_min - puzzle_char_max_size)), puzzle[x][y], words_valid, [(x, y)], puzzle, tree_dictionary, regex_compile)
     print()
 
     search_time = time.time() - start_time
@@ -505,7 +504,7 @@ def get_words(x: int, y: int, length: int,
     row_count = len(puzzle)
 
     # If we haven't reached the end of the path, move to the next positions and recurse
-    if length > 1:
+    if length < options.length_max:
         for pos_x in (-1, 0, 1):
             for pos_y in (-1, 0, 1):
                 temp_x: int = x + pos_x
@@ -520,25 +519,24 @@ def get_words(x: int, y: int, length: int,
                             regex: regex_compile.Match[str] = re.match(options.filter, word)
                             if not regex:
                                 return
-                        if lookup_word(dictionary, word + puzzle[temp_x][temp_y]):
+                        partial_match, full_match = lookup_word(dictionary, word + puzzle[temp_x][temp_y])
+                        if full_match:
+                            words.append(word + puzzle[temp_x][temp_y])
+                        if partial_match or full_match:
                             get_words(
-                                x=temp_x, y=temp_y, length=length - 1,
+                                x=temp_x, y=temp_y, length=length + 1,
                                 word=word + puzzle[temp_x][temp_y], words=words,
                                 used_squares=new_used_squares,
                                 puzzle=puzzle, dictionary=dictionary,
                                 regex_compile=regex_compile
                             )
+                        #if not any((partial_match, full_match)):
+                        #    return
 
-    # Append the word to the list
-    if length <= 1 and length <= options.length_min:
-        if lookup_word(dictionary, word + '\n'):
-            words.append(word)
-        return
-    return
 
 
 @count_calls
-def lookup_word(dictionary: dict[str, str | dict], word: str) -> bool:
+def lookup_word(dictionary: dict[str, str | dict], word: str) -> (bool, bool):
     """
     Find full or partial record of word in dictionary
     :param dictionary: Hierarchy dictionary
@@ -549,8 +547,8 @@ def lookup_word(dictionary: dict[str, str | dict], word: str) -> bool:
     for letter in word:
         trie_node: [dict | None] = trie_node.get(letter)
         if trie_node is None:
-            return False
-    return True
+            return False, False
+    return True, '\n' in trie_node
 
 
 def progressbar(position: int = 0, maximum: int = 100, title: str = 'Loading', width: int | None = None) -> None:
@@ -715,7 +713,7 @@ if __name__ == '__main__':
                               help='only a fixed length\n'
                                    'note: Overrides minimum and maximum values')
     filter_group.add_argument('-M', '--max', type=number_range(1, 32),
-                              action='store', dest='length_max', default=None,
+                              action='store', dest='length_max', default=32,
                               help='maximum word length \n'
                                    'default: puzzle size or 32 whichever is less')
     filter_group.add_argument('-m', '--min', type=number_range(1, 32),

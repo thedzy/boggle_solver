@@ -294,6 +294,12 @@ No known bugs.  Works.
   - `-r`, became the options for randomise
   - `-D`, keep duplicates
 
+### 1.10.0
+- On average 25x faster on puzzles larger than 5, 5-20x faster on 3-5
+  - Was looking at code after counting lookups and realised I was doing alot of duplicate lookups
+- Fixed an output on stdout that would have affected json parsing
+- Updated benchmarks with new run
+
 ### New in convert_dictionary.py
 
 #### 1.1.1

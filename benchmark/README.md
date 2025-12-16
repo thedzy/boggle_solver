@@ -1,4 +1,4 @@
-# Benchmark Report — benchmark.py (Boggle Solver)
+cp # Benchmark Report — benchmark.py (Boggle Solver)
 These benchmarks evaluate how boggle_solver.py scales with puzzle size, dictionary size, and lookup volume. The aim is to expose bottlenecks, highlight linear vs non-linear growth, and identify where inefficiencies get amplified at scale.
 
 ---
