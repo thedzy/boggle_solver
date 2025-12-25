@@ -48,25 +48,27 @@ Give the solver a puzzle and the parameter that it works in and get the results.
 Optionally, play the puzzle for you.
 
 ```
-usage: boggle_solver.py [-h] [-d DICTIONARY] [-p [PUZZLE ...] | -S | --puzzle-file PUZZLE_FILE] [--randomise] [-s PUZZLE_SIZE] [-a] [-o] [-r] [--list]
-                        [--json | --pretty-json | --csv CSV | --minimal-csv MINIMAL_CSV] [-l LENGTH] [-M LENGTH_MAX] [-m LENGTH_MIN] [-C PATTERN [PATTERN ...]]
-                        [-f REGEX] [--keep-duplicates] [-e [WAIT_TIME]] [--speed SPEED] [-i]
+usage: boggle_solver.py [-h] [-d DICTIONARY] [-p [PUZZLE ...] | -S | --puzzle-file PUZZLE_FILE] [-r] [-s PUZZLE_SIZE] [-a] [-o] [-O] [--list] [--json |
+                        --pretty-json | --csv CSV | --minimal-csv MINIMAL_CSV] [-l LENGTH] [-M LENGTH_MAX] [-m LENGTH_MIN] [-c PATTERN [PATTERN ...]] [-f REGEX]
+                        [-D] [-e [WAIT_TIME]] [--speed SPEED] [-i] [--brute-force]
 
 boggle_solver.py will find all the words in a given/generated puzzle using a dictionary of choice.
 
 options:
     -h, --help
             show this help message and exit
+    --brute-force
+            brute force every possibility, very processor intensive, does not use the dictiionary to validate words
 
 Dictionary:
-    -d DICTIONARY, --dict DICTIONARY
+    -d, --dict DICTIONARY
             dictionary file to use, in .hd format, See convert_dictionary.py
-            default: /Users/syoung/git/boggle_solver/dictionary.hd
+            default: /Users/syoung/git/boggle_solver/dictionaries/default.hd
 
 Puzzle:
     Specify or generate a puzzle
 
-    -p [PUZZLE ...], --puzzle [PUZZLE ...]
+    -p, --puzzle [PUZZLE ...]
             puzzle tiles in order of appearance, space separated, top-left to bottom-right
             default: randomly generated
             example: a b c d e f g h qu
@@ -74,11 +76,11 @@ Puzzle:
             standard puzzle, consisting on 16 dies in 4x4 grid
     --puzzle-file PUZZLE_FILE
             load a file of characters, will filter for characters and split on spaces
-    --randomise
+    -r, --randomise
             randomise specified puzzle letters
-    -s PUZZLE_SIZE, --size PUZZLE_SIZE
+    -s, --size PUZZLE_SIZE
             puzzle size if randomly generated randomly generated
-            default: 1
+            default: 2
             example: 4 is 4x4
 
 Display:
@@ -90,7 +92,7 @@ Display:
     -o, --order-ascending
             display words ordered by size ascending, compatible with -a/--alpha
             default: False
-    -r, --order-descending
+    -O, --order-descending
             display words ordered by size descending, compatible with -a/--alpha
             default: False
     --list  display as list instead of columns
@@ -106,48 +108,47 @@ Display:
 Filtering:
     Filter down the results by length, contents and REGEX
 
-    -l LENGTH, --length LENGTH
-            Only a fixed length
-            Note: Overrides minimum and maximum values
-    -M LENGTH_MAX, --max LENGTH_MAX
-            maximum word length 
+    -l, --length LENGTH
+            only a fixed length
+            note: Overrides minimum and maximum values
+    -M, --max LENGTH_MAX
+            maximum word length
             default: puzzle size or 32 whichever is less
-    -m LENGTH_MIN, --min LENGTH_MIN
+    -m, --min LENGTH_MIN
             minimum word length
             default: 3
-    -C PATTERN [PATTERN ...], --contains PATTERN [PATTERN ...]
+    -c, --contains PATTERN [PATTERN ...]
             filter results containing the patterns in any order
             example:
-            te a s can find: teas and steady but not seats
+            	te a s can find: teas and steady but not seats
             default: None
-    -f REGEX, --filter REGEX
+    -f, --filter REGEX
             filter results after contains filter
-            note: Only exact matches are found. 
+            note: Only exact matches are found.
             examples:
-            z will find only z, z.* will find all words beginning with z 
-            .{3}|.{5} will find 3 or 5 letter words
+            	z will find only z, z.* will find all words beginning with z
+            	.{3}|.{5} will find 3 or 5 letter words
             default: None
-    --keep-duplicates
+    -D, --keep-duplicates
             keep duplicates in found words for raw word count and/or performance stats
 
 Keyboard emulations:
-    Emulate key presses in Windows
+    Emulate key presses
 
-    -e [WAIT_TIME], --enter [WAIT_TIME]
+    -e, --enter [WAIT_TIME]
             after x seconds delay, start entering with keyboard
             this is the time to switch to the app to receive keyboard strokes
             WARNING: It is highly recommended that you leave your console window accessible
             default: 4
-            note: Windows ONLY
     --speed SPEED
-            set the keyboard speed from -1 to 50 when using -e/--enter 
-            note: -1 will be interpreted as random between each action. 
+            set the keyboard speed from -1 to 50 when using -e/--enter
+            note: -1 will be interpreted as random between each action.
             note: some programs have issues with a very high speeds
-            default: 47
+            default: 47.0
     -i, --interrupt-off
-            do not exit when returning to the window where the code ran from when using -e/--enter 
+            on Windows: do not exit when returning to the window where the code ran from when using -e/--enter
+            on macOS:   do not exit when leaving the windows which is entering the key presses -e/--enter
             default: False
-
 ```
 
 Benchmark
