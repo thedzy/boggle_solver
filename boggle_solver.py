@@ -24,18 +24,18 @@ import csv
 import ctypes
 import json
 import math
+import mmap
 import os
 import pickle
 import platform
 import random
 import re
-import mmap
 import sys
 import time
 from configparser import ConfigParser
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
-from decimal import Decimal, getcontext
 
 try:
     from Quartz import CGEventCreateKeyboardEvent, CGEventPost, kCGHIDEventTap
@@ -63,27 +63,31 @@ def main() -> None:
     Processing options
     """
     # Load dictionary
-    try:
-        with open(options.dictionary.name, 'rb') as file_handle:
-            with mmap.mmap(file_handle.fileno(), 0, access=mmap.ACCESS_READ) as memory_map:
-                tree_dictionary = pickle.loads(memory_map)
-    except (UnicodeDecodeError, EOFError):
-        print_error('Dictionary may be corrupt or not a dictionary',
-                    'Verify file or reprocess dictionary')
-    except Exception as err:
-        print_error(f'Error loading dictionary:', str(err))
+    if options.brute_force:
+        tree_dictionary = {}
+        dictionary_depth = 32
+    else:
+        try:
+            with open(options.dictionary.name, 'rb') as file_handle:
+                with mmap.mmap(file_handle.fileno(), 0, access=mmap.ACCESS_READ) as memory_map:
+                    tree_dictionary = pickle.loads(memory_map)
+        except (UnicodeDecodeError, EOFError):
+            print_error('Dictionary may be corrupt or not a dictionary',
+                        'Verify file or reprocess dictionary')
+        except Exception as err:
+            print_error(f'Error loading dictionary:', str(err))
 
-    # Get the dictionaries largest words
-    dictionary_depth = 0
-    stack = [(tree_dictionary, 1)]
+        # Get the dictionaries largest words
+        dictionary_depth = 0
+        stack = [(tree_dictionary, 1)]
 
-    while stack:
-        current_dict, current_depth = stack.pop()
-        dictionary_depth = max(dictionary_depth, current_depth)
+        while stack:
+            current_dict, current_depth = stack.pop()
+            dictionary_depth = max(dictionary_depth, current_depth)
 
-        for value in current_dict.values():
-            if isinstance(value, dict):
-                stack.append((value, current_depth + 1))
+            for value in current_dict.values():
+                if isinstance(value, dict):
+                    stack.append((value, current_depth + 1))
 
     # Get section runtime
     dictionary_load_time: float = time.perf_counter() - start_time
@@ -832,7 +836,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--brute-force', default=False,
                         action='store_true', dest='brute_force',
-                        help=argparse.SUPPRESS)
+                        help='brute force every possibility, very processor intensive, does not use the dictiionary to validate words')
 
     options: argparse.Namespace = parser.parse_args()
 
