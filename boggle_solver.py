@@ -19,10 +19,12 @@ __email__ = "thedzy@hotmail.com"
 __status__ = "Development"
 
 import argparse
+import configparser
 import csv
 import ctypes
 import json
 import math
+import mmap
 import os
 import pickle
 import platform
@@ -31,6 +33,7 @@ import re
 import sys
 import time
 from configparser import ConfigParser
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -39,12 +42,10 @@ try:
     from AppKit import NSWorkspace, NSRunLoop, NSDate, NSDefaultRunLoopMode
 except:
     pass
-SPEED_STEPS = 50
+SPEED_STEPS: int = 50
 
 
 def main() -> None:
-    start_time: float = time.time()
-
     if 'windows' in platform.platform().lower():
         # Capture the window that we are starting with, if we return we can send interrupt
         start_window: ctypes.windll = ctypes.windll.user32.GetForegroundWindow()
@@ -55,23 +56,42 @@ def main() -> None:
     except OSError:
         terminal_width: int = 80
 
-    printing = not any([options.json, options.pretty_json, options.csv, options.minimal_csv])
+    printing: bool = not any([options.json, options.pretty_json, options.csv, options.minimal_csv, options.brute_force])
 
+    start_time: float = time.perf_counter()
     """
     Processing options
     """
     # Load dictionary
-    try:
-        tree_dictionary: dict[str, str] = pickle.load(options.dictionary)
-        options.dictionary.close()
-    except (UnicodeDecodeError, EOFError):
-        print_error('Dictionary may be corrupt or not a dictionary',
-                    'Verify file or reprocess dictionary')
-    except Exception as err:
-        print_error(f'Error loading dictionary:', str(err))
+    if options.brute_force:
+        tree_dictionary = {}
+        dictionary_depth = 32
+    else:
+        try:
+            with open(options.dictionary.name, 'rb') as file_handle:
+                with mmap.mmap(file_handle.fileno(), 0, access=mmap.ACCESS_READ) as memory_map:
+                    tree_dictionary = pickle.loads(memory_map)
+        except (UnicodeDecodeError, EOFError):
+            print_error('Dictionary may be corrupt or not a dictionary',
+                        'Verify file or reprocess dictionary')
+        except Exception as err:
+            print_error(f'Error loading dictionary:', str(err))
 
-    # Get stat
-    dictionary_load_time = time.time() - start_time
+        # Get the dictionaries largest words
+        dictionary_depth = 0
+        stack = [(tree_dictionary, 1)]
+
+        while stack:
+            current_dict, current_depth = stack.pop()
+            dictionary_depth = max(dictionary_depth, current_depth)
+
+            for value in current_dict.values():
+                if isinstance(value, dict):
+                    stack.append((value, current_depth + 1))
+
+    # Get section runtime
+    dictionary_load_time: float = time.perf_counter() - start_time
+    start_time: float = time.perf_counter()
 
     # Validate regex before continuing
     if options.filter:
@@ -103,8 +123,8 @@ def main() -> None:
 
         puzzle_letters: list[str] = []
         while len(dies) > 0:
-            random_index = random.choice(list(dies.keys()))
-            popped_die = dies.pop(random_index)
+            random_index: int = random.choice(list(dies.keys()))
+            popped_die: list[str] = dies.pop(random_index)
 
             puzzle_letter: str = random.choice(popped_die)
             puzzle_letters.append(puzzle_letter)
@@ -133,13 +153,13 @@ def main() -> None:
 
         # Get size and generate missing tiles
         if options.puzzle_file:
-            file_characters = options.puzzle_file.read().lower()
-            filtered_characters = re.sub(r'[^A-Za-z\s]', '', file_characters)
-            puzzle_characters = re.split(r'\s+', filtered_characters.strip())
+            file_characters: str = options.puzzle_file.read().lower()
+            filtered_characters: str = re.sub(r'[^A-Za-z\s]', '', file_characters)
+            puzzle_characters: list[str] = re.split(r'\s+', filtered_characters.strip())
         else:
             puzzle_characters: list[str] = list(options.puzzle[0]) if len(options.puzzle) == 1 else options.puzzle
-            puzzle_characters = [re.sub(r'[^A-Za-z]', '', char) for char in puzzle_characters]
-            puzzle_characters = [char.lower() for char in puzzle_characters if len(char) > 0]
+            puzzle_characters: list[str] = [re.sub(r'[^A-Za-z]', '', char) for char in puzzle_characters]
+            puzzle_characters: list[str] = [char.lower() for char in puzzle_characters if len(char) > 0]
         size: int = len(puzzle_characters) if len(options.puzzle) > options.puzzle_size ** 2 else options.puzzle_size ** 2
 
         generator_count: int = size - len(puzzle_characters)
@@ -163,7 +183,7 @@ def main() -> None:
             puzzle_characters = puzzle_characters[row_count:]
 
     # Set the max/min length of a word
-    length_max: int = min(row_count ** 2, 32)
+    length_max: int = min(row_count ** 2, dictionary_depth)
     length_min: int = 3
     if options.length:
         length_min = length_max = options.length
@@ -201,16 +221,21 @@ def main() -> None:
         print('\n'.join([''.join([f'{item:^{tile_size}}' for item in row]) for row in puzzle]))
         print('=' * ((row_count * tile_size) - 1))
 
+    # Get section runtime
+    puzzle_generation: float = time.perf_counter() - start_time
+    start_time: float = time.perf_counter()
+
     """
     Searching
     """
     # Setup a progressbar
     bar_position: int = 0
     bar_position_max: int = (row_count ** 2)
-    puzzle_char_max_size = max(len(cell) for row in puzzle for cell in row)
+    puzzle_char_max_size: int = max(len(cell) for row in puzzle for cell in row)
 
     # Loop through to find the words
     words_valid: list[str] = []
+    lookups: int = 0
     for index_x in range(0, row_count):
         for index_y in range(0, row_count):
             x, y = (index_x, index_y)
@@ -218,10 +243,12 @@ def main() -> None:
             progressbar(bar_position, bar_position_max, puzzle[x][y].upper(), terminal_width)
             # Call to find words starting from and ending at
             regex_compile: re.Pattern[str] | None = re.compile(r'^m[a-z]+') if options.filter else None
-            get_words(x, y, max((1, options.length_min - puzzle_char_max_size)), puzzle[x][y], words_valid, [(x, y)], puzzle, tree_dictionary, regex_compile)
+            lookups += get_words(x, y, max((1, options.length_min - puzzle_char_max_size)), puzzle[x][y], words_valid, [(x, y)], puzzle, tree_dictionary, regex_compile)
     print()
 
-    search_time = time.time() - start_time
+    # Get section runtime
+    search_time: float = time.perf_counter() - start_time
+    start_time: float = time.perf_counter()
 
     """
     Sorting and filtering
@@ -238,8 +265,8 @@ def main() -> None:
         if printing:
             print(f'Filtering words with patterns "{", ".join(options.filter_contains)}"{" " * 80}')
         results['contains'] = options.filter_contains
-        pattern_list = ['^.*'] + [f'(?=.*{x})' for x in options.filter_contains] + ['.*']
-        pattern2 = re.compile(''.join(pattern_list), re.IGNORECASE)
+        pattern_list: list[str] = ['^.*'] + [f'(?=.*{x})' for x in options.filter_contains] + ['.*']
+        pattern2: re.Pattern[Any] = re.compile(''.join(pattern_list), re.IGNORECASE)
         for word in words_valid[:]:
             if not pattern2.fullmatch(word):
                 words_valid.remove(word)
@@ -259,8 +286,11 @@ def main() -> None:
 
     results['words']: list[str] = words_valid
 
+    # Get section runtime
+    filter_time: float = time.perf_counter() - start_time
+
     # Get runtime
-    total_time: float = time.time() - start_time
+    total_time: float = dictionary_load_time + search_time + filter_time
 
     """
     Display results
@@ -269,9 +299,11 @@ def main() -> None:
                                         'total_word_count': raw_count,
                                         'word_count': len(words_valid),
                                         'dictionary_load_time': dictionary_load_time,
-                                        'search_time': search_time - dictionary_load_time,
-                                        'time_per_word': 0.0 if len(words_valid) == 0 else (search_time - dictionary_load_time) / len(words_valid),
-                                        'word_lookups': lookup_word.get_count(),
+                                        'search_time': search_time,
+                                        'filter_time': filter_time,
+                                        'puzzle_generation_time': puzzle_generation,
+                                        'time_per_word': 0.0 if len(words_valid) == 0 else search_time / len(words_valid),
+                                        'word_lookups': lookups,
                                         'total_time': total_time}
     if options.pretty_json:
         print(json.dumps(results, indent=2))
@@ -282,7 +314,7 @@ def main() -> None:
         return
 
     if options.csv:
-        writer = csv.writer(options.csv)
+        writer: csv.writer = csv.writer(options.csv)
 
         writer.writerow(['puzzle'])
         for grid_row in results['puzzle']:
@@ -300,19 +332,19 @@ def main() -> None:
         return
 
     if options.minimal_csv:
-        writer = csv.writer(options.minimal_csv)
+        writer: csv.writer = csv.writer(options.minimal_csv)
         for word in results['words']:
             writer.writerow([word])
         return
 
     # Print words
-    if len(words_valid) > 0:
+    if len(words_valid) > 0 and not options.brute_force:
         if not options.list:
             divider: str = ' | '
 
-            column_width = len(max(words_valid, key=len)) + len(divider)
-            columns = int(((terminal_width - 1) - len(divider)) / column_width)
-            column_height = int(len(words_valid) / columns) + 1
+            column_width: int = len(max(words_valid, key=len)) + len(divider)
+            columns: int = int(((terminal_width - 1) - len(divider)) / column_width)
+            column_height: int = int(len(words_valid) / columns) + 1
 
             words_valid_columned: list[Any] = []
             start, end = 0, 0
@@ -322,7 +354,7 @@ def main() -> None:
                     words_valid_columned.append(words_valid[start:end])
                 except IndexError:
                     words_valid_columned.append(words_valid[start:])
-                start = end
+                start: int = end
 
             for row in range(column_height):
                 print(divider, end='')
@@ -336,29 +368,44 @@ def main() -> None:
             print('\n'.join(words_valid))
 
     # Print word count and stats
-    print(f'Total dictionary lookups {lookup_word.get_count():,}')
+    print(f'Approximate potential words: {estimated_paths(row_count, length_max)}')
+    print(f'Total dictionary lookups {lookups:,}')
     if length_min is length_max:
         print(f'Found {len(words_valid)} {"unique" if options.remove_duplicates else "total"} word(s) of {length_max} characters in length and matching filters')
     else:
         print(f'Found {len(words_valid):,} {"unique" if options.remove_duplicates else "total"} word(s) between {length_min} and {length_max} characters in length and matching filters')
     print('--')
-    print(f'Time to load dictionary  {dictionary_load_time:12.3f}s')
-    print(f'Time to search           {search_time - dictionary_load_time:12.3f}s')
-    print(f'Time to filter           {total_time - search_time:12.3f}s')
-    print(f'Total:                   {total_time:12.3f}s')
+
+    time_sets: dict[str, float] = dict(
+        h=60.0 * 60.0,
+        m=60.0,
+        s=1.0,
+        ms=0.001,
+        µs=0.000001,
+    )
+    for label, value in time_sets.items():
+        if search_time >= value:
+            time_multiplier: float = value
+            time_format: str = label
+            break
+    print(f'Time to load dictionary  {dictionary_load_time / time_multiplier:12.3f}{time_format}')
+    print(f'Time to search           {search_time / time_multiplier:12.3f}{time_format}')
+    print(f'Time to filter           {filter_time / time_multiplier:12.3f}{time_format}')
+    print(f'Total:                   {total_time / time_multiplier:12.3f}{time_format}')
+
     """
     Keyboard emulation
     """
     if options.enter:
         # Countdown to start
         print('Starting typing in ', end='')
-        count_down_timer = options.enter + 1
+        count_down_timer: int = options.enter + 1
         for count_down in range(1, count_down_timer):
             print(count_down_timer - count_down)
             time.sleep(1)
         print('Go!')
 
-        speed = (SPEED_STEPS - options.speed) / SPEED_STEPS
+        speed: float = (SPEED_STEPS - options.speed) / SPEED_STEPS
 
         if 'windows' in platform.platform().lower():
             # For each word, emulate typing
@@ -366,7 +413,7 @@ def main() -> None:
                 for letter in word:
                     # If interrupting, check if we are back the window
                     if not options.interrupt:
-                        focus_window = ctypes.windll.user32.GetForegroundWindow()
+                        focus_window: Any = ctypes.windll.user32.GetForegroundWindow()
                         if focus_window == start_window:
                             exit()
 
@@ -386,11 +433,11 @@ def main() -> None:
             if 'Quartz' not in sys.modules or 'AppKit' not in sys.modules:
                 print('Keyboard injection unavailable on macOS, requires "Quartz" and "AppKit" modules')
                 return
-            start_window = mac_foreground_app()
+            start_window: str | None = mac_foreground_app()
             for word in words_valid:
                 for letter in word:
                     if not options.interrupt:
-                        current_bundle_id = mac_foreground_app()
+                        current_bundle_id: str | None = mac_foreground_app()
                         if current_bundle_id != start_window:
                             print(f'Focus lost from {start_window}, aborting typing')
                             return
@@ -399,18 +446,6 @@ def main() -> None:
 
                 mac_press_key('\n', speed / 2)
                 time.sleep(speed)
-
-
-def count_calls(func):
-    call_count = 0
-
-    def wrapper(*args, **kwargs):
-        nonlocal call_count
-        call_count += 1
-        return func(*args, **kwargs)
-
-    wrapper.get_count = lambda: call_count
-    return wrapper
 
 
 def mac_foreground_app() -> str | None:
@@ -436,7 +471,7 @@ def mac_press_key(character: str, hold_time: float) -> None:
     :param hold_time: Key hold time
     :return: (void)
     """
-    mac_keycodes = {
+    mac_keycodes: dict[str, int] = {
         'a': 0, 'b': 11, 'c': 8, 'd': 2, 'e': 14, 'f': 3,
         'g': 5, 'h': 4, 'i': 34, 'j': 38, 'k': 40, 'l': 37,
         'm': 46, 'n': 45, 'o': 31, 'p': 35, 'q': 12, 'r': 15,
@@ -486,7 +521,7 @@ def get_words(x: int, y: int, length: int,
               word: str, words: list[str],
               used_squares: list[tuple], puzzle: list[list[str]],
               dictionary: dict[str, Any],
-              regex_compile: re.Pattern[str] | None = None):
+              regex_compile: re.Pattern[str] | None = None) -> int:
     """
     Get a word starting from a position and to a length
     Note: Recursive
@@ -501,7 +536,8 @@ def get_words(x: int, y: int, length: int,
     :param regex_compile: regex to match
     :return: (void)
     """
-    row_count = len(puzzle)
+    row_count: int = len(puzzle)
+    count: int = 0
 
     # If we haven't reached the end of the path, move to the next positions and recurse
     if length < options.length_max:
@@ -518,24 +554,22 @@ def get_words(x: int, y: int, length: int,
                         if regex_compile:
                             regex: regex_compile.Match[str] = re.match(options.filter, word)
                             if not regex:
-                                return
+                                return count
+                        count += 1
                         partial_match, full_match = lookup_word(dictionary, word + puzzle[temp_x][temp_y])
                         if full_match:
                             words.append(word + puzzle[temp_x][temp_y])
                         if partial_match or full_match:
-                            get_words(
+                            count += get_words(
                                 x=temp_x, y=temp_y, length=length + 1,
                                 word=word + puzzle[temp_x][temp_y], words=words,
                                 used_squares=new_used_squares,
                                 puzzle=puzzle, dictionary=dictionary,
                                 regex_compile=regex_compile
                             )
-                        #if not any((partial_match, full_match)):
-                        #    return
+    return count
 
 
-
-@count_calls
 def lookup_word(dictionary: dict[str, str | dict], word: str) -> (bool, bool):
     """
     Find full or partial record of word in dictionary
@@ -543,12 +577,49 @@ def lookup_word(dictionary: dict[str, str | dict], word: str) -> (bool, bool):
     :param word: String to locate
     :return: Found
     """
+    if options.brute_force:
+        return True, True
     trie_node: dict[str, str | dict] = dictionary
     for letter in word:
         trie_node: [dict | None] = trie_node.get(letter)
         if trie_node is None:
             return False, False
     return True, '\n' in trie_node
+
+
+def estimated_paths(grid_size: int, max_length: int) -> str:
+    """
+    Estimates paths for a specific length limit (e.g. 1-32).
+    Does a decent job as estimating, with small puzzles of know possibilities, its within 1%
+    But drop most of the digits, so its off by more, but its a general guideline
+
+    Formula logic:
+    - Assume a growth factor (2.76)
+    - Scale by the number of starting cells (grid_size^2).
+    - Cap the length at the total number of cells (cannot reuse dice).
+    """
+    total_cells = grid_size ** 2
+    effective_length = min(max_length, total_cells)
+
+    # Base Calculation (The formula above)
+    base = Decimal('2.76')
+    multiplier = Decimal('1.1')
+
+    # Calculate the core complexity for a path of this length
+    value = multiplier * (base ** effective_length)
+
+    # Scaling
+    # If we have a 10x10 board (100 cells) but only want paths of length 5,
+    # we have 20x more places to start than a 5-cell board would.
+    space_ratio = Decimal(total_cells) / Decimal(effective_length)
+    final_value = value * space_ratio
+
+    # Remove insignificant numbers
+    zeros_to_remove = max([0, ((len(f'{final_value:0.0f}') // 3) * 3) - 3])
+    mask = 10 ** zeros_to_remove
+    clean_number = (final_value // mask) * mask
+
+    return f'{clean_number:,.0f}'
 
 
 def progressbar(position: int = 0, maximum: int = 100, title: str = 'Loading', width: int | None = None) -> None:
@@ -610,7 +681,7 @@ if __name__ == '__main__':
 
         def number_range_parser(argument):
             try:
-                argument = obj_type(argument)
+                argument: type = obj_type(argument)
             except ValueError:
                 argparse.ArgumentError(f'Must be of type {obj_type.__name__}')
 
@@ -624,13 +695,13 @@ if __name__ == '__main__':
 
     # Load options
     settings_path: Path = Path(__file__).parent.joinpath('config.ini')
-    config = ConfigParser()
+    config: configparser.ConfigParser = ConfigParser()
     config.read_dict(dict(options=dict()))
     if settings_path.exists():
         config.read(settings_path)
 
     # Load options
-    parser = argparse.ArgumentParser(
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description='%(prog)s will find all the words in a given/generated puzzle using a dictionary of choice.',
         formatter_class=parser_formatter(argparse.RawTextHelpFormatter, indent_increment=4, max_help_position=12,
                                          width=160))
@@ -712,11 +783,11 @@ if __name__ == '__main__':
                               action='store', dest='length', default=None,
                               help='only a fixed length\n'
                                    'note: Overrides minimum and maximum values')
-    filter_group.add_argument('-M', '--max', type=number_range(1, 32),
+    filter_group.add_argument('-M', '--max', type=number_range(1, 32, int),
                               action='store', dest='length_max', default=32,
                               help='maximum word length \n'
                                    'default: puzzle size or 32 whichever is less')
-    filter_group.add_argument('-m', '--min', type=number_range(1, 32),
+    filter_group.add_argument('-m', '--min', type=number_range(1, 32, int),
                               action='store', dest='length_min', default=3,
                               help='minimum word length\n'
                                    'default: %(default)s')
@@ -763,7 +834,11 @@ if __name__ == '__main__':
                                      'on macOS:   do not exit when leaving the windows which is entering the key presses -e/--enter \n'
                                      'default: %(default)s')
 
-    options = parser.parse_args()
+    parser.add_argument('--brute-force', default=False,
+                        action='store_true', dest='brute_force',
+                        help='brute force every possibility, very processor intensive, does not use the dictiionary to validate words')
+
+    options: argparse.Namespace = parser.parse_args()
 
     # Save options
     config.setdefault('options', {})
