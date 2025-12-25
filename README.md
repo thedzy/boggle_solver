@@ -309,6 +309,9 @@ No known bugs.  Works.
 - Printer estimate for potential words in puzzle
 - Added dictionary visualiser. to see structure
 
+### 1.11.1
+- Fixed a logic problem when searching with minimum length option
+
 ### New in convert_dictionary.py
 
 #### 1.1.1

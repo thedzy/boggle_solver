@@ -196,17 +196,12 @@ def main() -> None:
             length_min: int = options.length_min
 
     # Validate length
-    if length_max > (row_count ** 2):
+    if length_max > row_count ** 2:
         length_max: int = row_count ** 2
-        print(f'Max length exceeds puzzle size, setting to {length_max} instead', file=sys.stderr)
+        #print(f'Max length exceeds puzzle size, setting to {length_max} instead', file=sys.stderr)
 
     # Min cannot exceed max
     length_min: int = length_max if length_min > length_max else length_min
-
-    # Get minimum search length by taking the minimum word and taking of the longest tile
-    puzzle_char_max_size: int = len(max(options.puzzle, key=len)) if options.puzzle else 1
-    length_search_min: int = length_min - puzzle_char_max_size + 1
-    length_search_min: int = 1 if length_search_min <= 1 else length_search_min
 
     results: dict[str, Any] = {'puzzle': puzzle, 'filter': options.filter, 'contains': options.filter_contains, 'dictionary': options.dictionary.name}
 
@@ -231,7 +226,6 @@ def main() -> None:
     # Setup a progressbar
     bar_position: int = 0
     bar_position_max: int = (row_count ** 2)
-    puzzle_char_max_size: int = max(len(cell) for row in puzzle for cell in row)
 
     # Loop through to find the words
     words_valid: list[str] = []
@@ -243,7 +237,12 @@ def main() -> None:
             progressbar(bar_position, bar_position_max, puzzle[x][y].upper(), terminal_width)
             # Call to find words starting from and ending at
             regex_compile: re.Pattern[str] | None = re.compile(r'^m[a-z]+') if options.filter else None
-            lookups += get_words(x, y, max((1, options.length_min - puzzle_char_max_size)), puzzle[x][y], words_valid, [(x, y)], puzzle, tree_dictionary, regex_compile)
+            lookups += get_words(x, y,
+                                 length=1, max_length=length_max,
+                                 word=puzzle[x][y], words=words_valid,
+                                 used_squares=[(x, y)], puzzle=puzzle,
+                                 dictionary=tree_dictionary,
+                                 regex_compile=regex_compile)
     print()
 
     # Get section runtime
@@ -517,7 +516,7 @@ def win_press_key(key: str | None = None, modifier: str | None = None, hold_time
     ctypes.windll.user32.keybd_event(code, 0, 0x0002, 0)
 
 
-def get_words(x: int, y: int, length: int,
+def get_words(x: int, y: int, length: int, max_length: int,
               word: str, words: list[str],
               used_squares: list[tuple], puzzle: list[list[str]],
               dictionary: dict[str, Any],
@@ -528,6 +527,7 @@ def get_words(x: int, y: int, length: int,
     :param x: X Position
     :param y: Y Position
     :param length: Length of word to find
+    :param max_length: Max Length of word to find
     :param word: For recursion, should start empty
     :param words: List of found words
     :param used_squares: For recursion, track used positions
@@ -540,7 +540,7 @@ def get_words(x: int, y: int, length: int,
     count: int = 0
 
     # If we haven't reached the end of the path, move to the next positions and recurse
-    if length < options.length_max:
+    if length <= max_length:
         for pos_x in (-1, 0, 1):
             for pos_y in (-1, 0, 1):
                 temp_x: int = x + pos_x
@@ -561,7 +561,7 @@ def get_words(x: int, y: int, length: int,
                             words.append(word + puzzle[temp_x][temp_y])
                         if partial_match or full_match:
                             count += get_words(
-                                x=temp_x, y=temp_y, length=length + 1,
+                                x=temp_x, y=temp_y, length=length + 1, max_length=max_length,
                                 word=word + puzzle[temp_x][temp_y], words=words,
                                 used_squares=new_used_squares,
                                 puzzle=puzzle, dictionary=dictionary,
