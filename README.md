@@ -300,6 +300,14 @@ No known bugs.  Works.
 - Fixed an output on stdout that would have affected json parsing
 - Updated benchmarks with new run
 
+### 1.11.0
+- Vaguely fast load of the dictionary
+- Brute force option, every possible word is loaded
+- Get the max word length from dictionary to set the meax
+  - does not really result in speed
+- Printer estimate for potential words in puzzle
+- Added dictionary visualiser. to see structure
+
 ### New in convert_dictionary.py
 
 #### 1.1.1
