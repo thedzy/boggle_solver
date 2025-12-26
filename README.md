@@ -48,9 +48,9 @@ Give the solver a puzzle and the parameter that it works in and get the results.
 Optionally, play the puzzle for you.
 
 ```
-usage: boggle_solver.py [-h] [-d DICTIONARY] [-p [PUZZLE ...] | -S | --puzzle-file PUZZLE_FILE] [-r] [-s PUZZLE_SIZE] [-a] [-o] [-O] [--list] [--json |
-                        --pretty-json | --csv CSV | --minimal-csv MINIMAL_CSV] [-l LENGTH] [-M LENGTH_MAX] [-m LENGTH_MIN] [-c PATTERN [PATTERN ...]] [-f REGEX]
-                        [-D] [-e [WAIT_TIME]] [--speed SPEED] [-i] [--brute-force]
+usage: boggle_solver.py [-h] [-d DICTIONARY] [-p [PUZZLE ...]] [-i] [--image-folder IMAGE_FOLDER] [-c] [-S] [--puzzle-file PUZZLE_FILE] [-r] [-s PUZZLE_SIZE]
+                        [-a] [-o] [-O] [--list] [--json | --pretty-json | --csv CSV | --minimal-csv MINIMAL_CSV] [-l LENGTH] [-M LENGTH_MAX] [-m LENGTH_MIN]
+                        [-C PATTERN [PATTERN ...]] [-f REGEX] [-D] [-e [WAIT_TIME]] [--speed SPEED] [--interrupt-off] [--brute-force]
 
 boggle_solver.py will find all the words in a given/generated puzzle using a dictionary of choice.
 
@@ -72,6 +72,12 @@ Puzzle:
             puzzle tiles in order of appearance, space separated, top-left to bottom-right
             default: randomly generated
             example: a b c d e f g h qu
+    -i, --image
+            load image from a folder and OCR
+    --image-folder IMAGE_FOLDER
+            folder to load image from
+    -c, --clipboard
+            use image in clipboard and OCR
     -S, --standard
             standard puzzle, consisting on 16 dies in 4x4 grid
     --puzzle-file PUZZLE_FILE
@@ -117,7 +123,7 @@ Filtering:
     -m, --min LENGTH_MIN
             minimum word length
             default: 3
-    -c, --contains PATTERN [PATTERN ...]
+    -C, --contains PATTERN [PATTERN ...]
             filter results containing the patterns in any order
             example:
             	te a s can find: teas and steady but not seats
@@ -139,13 +145,13 @@ Keyboard emulations:
             after x seconds delay, start entering with keyboard
             this is the time to switch to the app to receive keyboard strokes
             WARNING: It is highly recommended that you leave your console window accessible
-            default: 4
+            default: 3
     --speed SPEED
             set the keyboard speed from -1 to 50 when using -e/--enter
             note: -1 will be interpreted as random between each action.
             note: some programs have issues with a very high speeds
-            default: 47.0
-    -i, --interrupt-off
+            default: 49.5
+    --interrupt-off
             on Windows: do not exit when returning to the window where the code ran from when using -e/--enter
             on macOS:   do not exit when leaving the windows which is entering the key presses -e/--enter
             default: False
@@ -311,6 +317,11 @@ No known bugs.  Works.
 
 ### 1.11.1
 - Fixed a logic problem when searching with minimum length option
+
+### 1.12.0
+- OCR last image in a directory (Mac or Windows snippet folder/dictory)
+- OCR clipboard image
+- Returned -C to contains to use -c for clipboard
 
 ### New in convert_dictionary.py
 

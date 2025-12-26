@@ -37,6 +37,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+import image_loader
+
 try:
     from Quartz import CGEventCreateKeyboardEvent, CGEventPost, kCGHIDEventTap
     from AppKit import NSWorkspace, NSRunLoop, NSDate, NSDefaultRunLoopMode
@@ -59,6 +61,7 @@ def main() -> None:
     printing: bool = not any([options.json, options.pretty_json, options.csv, options.minimal_csv, options.brute_force])
 
     start_time: float = time.perf_counter()
+
     """
     Processing options
     """
@@ -137,6 +140,45 @@ def main() -> None:
             for puzzle_y in range(0, row_count):
                 row.append(puzzle_letters[puzzle_x * row_count + puzzle_y].lower())
             puzzle.append(row)
+    elif options.image:
+        newest_image_path: Path = image_loader.get_newest_image_path(options.image_folder)
+        print(f'Loading text from image {newest_image_path}', file=sys.stderr)
+
+        puzzle_characters: list[str] = [
+            line.lower()
+            for line in image_loader.ocr_image(newest_image_path, psm=6)
+        ]
+
+        row_count: int = int(math.sqrt(len(puzzle_characters)))
+        if not math.sqrt(len(puzzle_characters)).is_integer():
+            print(f'Did not get a square puzzle', file=sys.stderr)
+            print(f'Got {" ".join(puzzle_characters)}', file=sys.stderr)
+            exit()
+
+        # Create a matrix of tiles
+        puzzle: list[list[str]] = []
+        for _ in range(row_count):
+            puzzle.append(puzzle_characters[0:row_count])
+            puzzle_characters = puzzle_characters[row_count:]
+    elif options.clipboard:
+        print(f'Loading text from clipboard image', file=sys.stderr)
+
+        puzzle_characters: list[str] = [
+            line.lower()
+            for line in image_loader.ocr_image(clipboard=True, psm=6)
+        ]
+
+        row_count: int = int(math.sqrt(len(puzzle_characters)))
+        if not math.sqrt(len(puzzle_characters)).is_integer():
+            print(f'Did not get a square puzzle', file=sys.stderr)
+            print(f'Got {" ".join(puzzle_characters)}', file=sys.stderr)
+            exit()
+
+        # Create a matrix of tiles
+        puzzle: list[list[str]] = []
+        for _ in range(row_count):
+            puzzle.append(puzzle_characters[0:row_count])
+            puzzle_characters = puzzle_characters[row_count:]
     else:
         letters: list[str] = ['a', 'b', 'c', 'd', 'e', 'f', 'g',
                               'h', 'i', 'j', 'k', 'l', 'm', 'n',
@@ -198,7 +240,7 @@ def main() -> None:
     # Validate length
     if length_max > row_count ** 2:
         length_max: int = row_count ** 2
-        #print(f'Max length exceeds puzzle size, setting to {length_max} instead', file=sys.stderr)
+        # print(f'Max length exceeds puzzle size, setting to {length_max} instead', file=sys.stderr)
 
     # Min cannot exceed max
     length_min: int = length_max if length_min > length_max else length_min
@@ -693,6 +735,13 @@ if __name__ == '__main__':
         return number_range_parser
 
 
+    def valid_path(path):
+        path = Path(path)
+        if not path.is_dir():
+            raise argparse.ArgumentTypeError(f'{path} is an invalid folder/directory')
+        return path
+
+
     # Load options
     settings_path: Path = Path(__file__).parent.joinpath('config.ini')
     config: configparser.ConfigParser = ConfigParser()
@@ -719,11 +768,24 @@ if __name__ == '__main__':
     puzzle_group = parser.add_argument_group(title='Puzzle',
                                              description='Specify or generate a puzzle')
     puzzle_parser = puzzle_group.add_mutually_exclusive_group()
-    puzzle_parser.add_argument('-p', '--puzzle', dest='puzzle', default=[],
-                               action='store', nargs='*',
+    puzzle_parser.add_argument('-p', '--puzzle', default=[],
+                               action='store', dest='puzzle', nargs='*',
                                help='puzzle tiles in order of appearance, space separated, top-left to bottom-right\n'
                                     'default: randomly generated\n'
                                     'example: a b c d e f g h qu')
+
+    puzzle_parser.add_argument('-i', '--image', default=False,
+                               action='store_true', dest='image',
+                               help='load image from a folder and OCR')
+
+    puzzle_group.add_argument('--image-folder', type=valid_path,
+                              action='store', dest='image_folder',
+                              default=config['options'].get('image-folder', Path('/tmp').as_posix()),
+                              help='folder to load image from')
+
+    puzzle_parser.add_argument('-c', '--clipboard', default=False,
+                               action='store_true', dest='clipboard',
+                               help='use image in clipboard and OCR')
 
     puzzle_parser.add_argument('-S', '--standard', default=False,
                                action='store_true', dest='puzzle_standard',
@@ -791,7 +853,7 @@ if __name__ == '__main__':
                               action='store', dest='length_min', default=3,
                               help='minimum word length\n'
                                    'default: %(default)s')
-    filter_group.add_argument('-c', '--contains',
+    filter_group.add_argument('-C', '--contains',
                               action='store', dest='filter_contains', default=None, nargs='+',
                               metavar='PATTERN',
                               help='filter results containing the patterns in any order\n'
@@ -828,7 +890,7 @@ if __name__ == '__main__':
                                      'note: -1 will be interpreted as random between each action. \n'
                                      'note: some programs have issues with a very high speeds\n'
                                      'default: %(default)s')
-    keyboard_group.add_argument('-i', '--interrupt-off',
+    keyboard_group.add_argument('--interrupt-off',
                                 action='store_true', dest='interrupt', default=False,
                                 help='on Windows: do not exit when returning to the window where the code ran from when using -e/--enter \n'
                                      'on macOS:   do not exit when leaving the windows which is entering the key presses -e/--enter \n'
@@ -843,6 +905,7 @@ if __name__ == '__main__':
     # Save options
     config.setdefault('options', {})
     config['options']['dictionary'] = options.dictionary.name
+    config['options']['image-folder'] = options.image_folder.as_posix()
     config['options']['speed'] = str(options.speed)
     if options.enter is not None:
         config['options']['enter'] = str(options.enter)
