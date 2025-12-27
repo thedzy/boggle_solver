@@ -144,15 +144,17 @@ def main() -> None:
         newest_image_path: Path = image_loader.get_newest_image_path(options.image_folder)
         print(f'Loading text from image {newest_image_path}', file=sys.stderr)
 
+        tokens, raw = image_loader.ocr_image(newest_image_path, gutter_px=3, psm=6)
         puzzle_characters: list[str] = [
-            line.lower()
-            for line in image_loader.ocr_image(newest_image_path, psm=6)
+            token.lower()
+            for token in tokens
         ]
 
         row_count: int = int(math.sqrt(len(puzzle_characters)))
         if not math.sqrt(len(puzzle_characters)).is_integer():
             print(f'Did not get a square puzzle', file=sys.stderr)
-            print(f'Got {" ".join(puzzle_characters)}', file=sys.stderr)
+            print(f'Got {", ".join(puzzle_characters)}', file=sys.stderr)
+            print(raw)
             exit()
 
         # Create a matrix of tiles
@@ -163,15 +165,17 @@ def main() -> None:
     elif options.clipboard:
         print(f'Loading text from clipboard image', file=sys.stderr)
 
+        tokens, raw = image_loader.ocr_image(clipboard=True, gutter_px=3, psm=6)
         puzzle_characters: list[str] = [
-            line.lower()
-            for line in image_loader.ocr_image(clipboard=True, psm=6)
+            token.lower()
+            for token in tokens
         ]
 
         row_count: int = int(math.sqrt(len(puzzle_characters)))
         if not math.sqrt(len(puzzle_characters)).is_integer():
             print(f'Did not get a square puzzle', file=sys.stderr)
-            print(f'Got {" ".join(puzzle_characters)}', file=sys.stderr)
+            print(f'Got {", ".join(puzzle_characters)}', file=sys.stderr)
+            print(raw)
             exit()
 
         # Create a matrix of tiles
@@ -437,7 +441,7 @@ def main() -> None:
     """
     Keyboard emulation
     """
-    if options.enter:
+    if options.enter is not None:
         # Countdown to start
         print('Starting typing in ', end='')
         count_down_timer: int = options.enter + 1

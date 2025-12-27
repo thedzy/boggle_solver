@@ -318,10 +318,10 @@ No known bugs.  Works.
 ### 1.11.1
 - Fixed a logic problem when searching with minimum length option
 
-### 1.12.0
-- OCR last image in a directory (Mac or Windows snippet folder/dictory)
-- OCR clipboard image
-- Returned -C to contains to use -c for clipboard
+### 1.21.1
+- Reduced errors in OCR
+- Allow 0 seconds enter time
+
 
 ### New in convert_dictionary.py
 

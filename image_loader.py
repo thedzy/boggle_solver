@@ -49,7 +49,7 @@ def get_newest_image_path(images_dir: Path, image_suffixes: Iterable[str] = ('.p
     return newest_path
 
 
-def ocr_image(image_path: Path = Path(__file__), clipboard: bool = False,
+def ocr_image(image_path: Path|None = None, clipboard: bool = False,
               threshold: int = 128,
               oem: int = 3, psm: int = 6,
               gutter_px: int = 10, debug: bool = False) -> list[str]:
@@ -80,9 +80,9 @@ def ocr_image(image_path: Path = Path(__file__), clipboard: bool = False,
         ) from import_error
 
     if clipboard:
-        image = ImageGrab.grabclipboard()
-        if image is None:
-            raise RuntimeError('Clipboard does not contain an image')
+        image: Any|None = None
+        while image is None:
+            image = ImageGrab.grabclipboard()
     else:
         if not image_path.exists() or not image_path.is_file():
             raise RuntimeError(f'Image not found: {image_path}')
@@ -157,7 +157,7 @@ def ocr_image(image_path: Path = Path(__file__), clipboard: bool = False,
     # Return characters as array/list
     tokens: list[str] = re.findall(r'qu|[a-p,r-z]', row)
 
-    return tokens
+    return tokens, row
 
 
 if __name__ == '__main__':
@@ -169,5 +169,5 @@ if __name__ == '__main__':
     print(extracted_text)
 
     # clipboard
-    extracted_text: str = ocr_image(newest_image_path, oem=1, psm=6, clipboard=True, debug=True)
+    extracted_text: str = ocr_image(newest_image_path, gutter_px=3,   oem=1, psm=6, clipboard=True, debug=True)
     print(extracted_text)
