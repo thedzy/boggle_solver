@@ -49,7 +49,7 @@ def get_newest_image_path(images_dir: Path, image_suffixes: Iterable[str] = ('.p
     return newest_path
 
 
-def ocr_image(image_path: Path|None = None, clipboard: bool = False,
+def ocr_image(image_path: Path | None = None, clipboard: bool = False,
               threshold: int = 128,
               oem: int = 3, psm: int = 6,
               gutter_px: int = 10, debug: bool = False) -> list[str]:
@@ -64,10 +64,17 @@ def ocr_image(image_path: Path|None = None, clipboard: bool = False,
     :param debug: run in debug
     :return: extracted text
     """
+    misrepresentations: dict[str, str] = {
+        '1': 'i', '|': 'i',
+        '0': 'o', '8': 'b'
+    }
+
     # prevent unnecessarily modules from loading
-    config: str = f'--oem {oem} --psm {psm} -c tessedit_char_whitelist={string.ascii_letters}'
+    config: str = f'--oem {oem} --psm {psm} -c tessedit_char_whitelist={string.ascii_letters}{"".join(misrepresentations.keys())}'
     if debug:
         print(config)
+
+
 
     # Import necessary modules
     try:
@@ -80,7 +87,7 @@ def ocr_image(image_path: Path|None = None, clipboard: bool = False,
         ) from import_error
 
     if clipboard:
-        image: Any|None = None
+        image: Any | None = None
         while image is None:
             image = ImageGrab.grabclipboard()
     else:
@@ -154,6 +161,9 @@ def ocr_image(image_path: Path|None = None, clipboard: bool = False,
     # Reduce to all lower case
     row: str = extracted_text.lower()
 
+    for error, replacement in misrepresentations.items():
+        row = row.replace(error, replacement)
+
     # Return characters as array/list
     tokens: list[str] = re.findall(r'qu|[a-p,r-z]', row)
 
@@ -169,5 +179,5 @@ if __name__ == '__main__':
     print(extracted_text)
 
     # clipboard
-    extracted_text: str = ocr_image(newest_image_path, gutter_px=3,   oem=1, psm=6, clipboard=True, debug=True)
+    extracted_text: str = ocr_image(newest_image_path, gutter_px=3, oem=1, psm=6, clipboard=True, debug=True)
     print(extracted_text)

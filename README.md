@@ -319,7 +319,7 @@ No known bugs.  Works.
 - Fixed a logic problem when searching with minimum length option
 
 ### 1.21.1
-- Reduced errors in OCR
+- Reduced errors in OCR, but it still sometime sees characters not there
 - Allow 0 seconds enter time
 
 
